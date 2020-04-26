@@ -278,6 +278,7 @@ class Mesh:
         self.EBO = EBO[0]
         
         self.is_dirty = True
+        self.indices_size = 0
 
         # ..and in cleanup:
         # might need to be buffer refs
@@ -285,47 +286,50 @@ class Mesh:
         # glDeleteBuffers(1, VBO)
         # glDeleteBuffers(1, EBO)
 
-    def refresh_buffers(self, shader: Shader):
-        """Regenerate VBO/EBO every time the mesh data changes"""
-        print('Refresh buffers')
+    def rebuild(self, eval_obj, shader: Shader):
+        """Copy evaluated mesh data into buffers for updating the VBOs"""
+        print('Refresh buffers', self)
         
-        # TODO: Incorrect mesh. Need the eval_obj.to_mesh()
-        # from deps graph for the mesh with applied modifiers.
-        # See: https://docs.blender.org/api/current/bpy.types.Depsgraph.html
-        # and https://blenderartists.org/t/get-mesh-data-with-modifiers-applied-in-2-8/1163217
         
-        mesh = self.obj.data
-        
+        # mesh = self.obj.data
+        mesh = eval_obj.to_mesh()
+
         # Refresh triangles on the mesh
         mesh.calc_loop_triangles()
         
         # Fast copy vertex data / triangle indices from the mesh into buffers
+        # Reference: https://blog.michelanders.nl/2016/02/copying-vertices-to-numpy-arrays-in_4.html
         vertices = [0]*len(mesh.vertices) * 3
         mesh.vertices.foreach_get('co', vertices)
-        vertices = Buffer(GL_FLOAT, len(vertices), vertices)
+        self.vertices = Buffer(GL_FLOAT, len(vertices), vertices)
         
         normals = [0]*len(mesh.vertices) * 3
         mesh.vertices.foreach_get('normal', normals)
-        normals = Buffer(GL_FLOAT, len(normals), normals)
+        self.normals = Buffer(GL_FLOAT, len(normals), normals)
         
         indices = [0]*len(mesh.loop_triangles) * 3
-        self.indices_size = len(indices)
         mesh.loop_triangles.foreach_get('vertices', indices)
-        indices = Buffer(GL_INT, len(indices), indices)
+        self.indices = Buffer(GL_INT, len(indices), indices)
         
-        # TODO: Memory leak with old buffers? How do we release those?
+        eval_obj.to_mesh_clear()
 
+        # let the render loop set the new buffer data into the VAO,
+        # otherwise we may run into access violation issues. 
+        self.is_dirty = True
+
+
+    def rebuild_vbos(self, shader: Shader):
         # Bind the VAO so we can upload new buffers
         glBindVertexArray(self.VAO)
 
         # Copy verts
         glBindBuffer(GL_ARRAY_BUFFER, self.VBO[0])
-        glBufferData(GL_ARRAY_BUFFER, len(vertices) * 4, vertices, GL_STATIC_DRAW) # GL_STATIC_DRAW - for inactive mesh
+        glBufferData(GL_ARRAY_BUFFER, len(self.vertices) * 4, self.vertices, GL_STATIC_DRAW) # GL_STATIC_DRAW - for inactive mesh
         shader.set_vertex_attribute('Position', 0)
 
         # Copy normals
         glBindBuffer(GL_ARRAY_BUFFER, self.VBO[1])
-        glBufferData(GL_ARRAY_BUFFER, len(normals) * 4, normals, GL_STATIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, len(self.normals) * 4, self.normals, GL_STATIC_DRAW)
         shader.set_vertex_attribute('Normal', 0)
 
         # TODO: Tangent, Binormal, Color, Texcoord0-7
@@ -333,12 +337,15 @@ class Mesh:
 
         # Copy indices
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.EBO)
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, len(indices) * 4, indices, GL_STATIC_DRAW)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, len(self.indices) * 4, self.indices, GL_STATIC_DRAW)
 
         # Cleanup, just so bad code elsewhere doesn't also write to this VAO
         glBindVertexArray(0)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+        self.indices_size = len(self.indices)
+
 
     def update(self, obj):
         self.obj = obj
@@ -350,7 +357,7 @@ class Mesh:
 
     def draw(self, shader: Shader):
         if self.is_dirty:
-            self.refresh_buffers(shader)
+            self.rebuild_vbos(shader)
             self.is_dirty = False
 
         # Texture stuff go here.
@@ -456,16 +463,15 @@ class Material:
 
     
 class CustomRenderEngine(bpy.types.RenderEngine):
-    # These three members are used by blender to set up the
-    # RenderEngine; define its internal name, visible name and capabilities.
     bl_idname = "foo_renderer"
     bl_label = "Foo Renderer"
     bl_use_preview = True
 
-    # Init is called whenever a new render engine instance is created. Multiple
-    # instances may exist at the same time, for example for a viewport and final
-    # render.
     def __init__(self):
+        """Called when a new render engine instance is created. 
+
+        Note that multiple instances can exist @ once, e.g. a viewport and final render
+        """
         self.scene_data = None
         self.draw_data = None
         
@@ -522,68 +528,66 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         region = context.region
         view3d = context.space_data
         scene = depsgraph.scene
-        # dimensions = region.width, region.height
 
         self.updated_meshes = dict()
         self.updated_additional_lights = dict()
         self.updated_geometries = []
         
-        # Check for any updated mesh geometry to rebuild buffers
+        # Check for any updated mesh geometry to rebuild GPU buffers
         for update in depsgraph.updates:
-            print("Datablock updated: ", update.id.name, type(update.id))
+            name = update.id.name
             if type(update.id) == bpy.types.Object:
-                print('Object datablock updated', update.id.type, update.is_updated_geometry, update.is_updated_transform)
-                if update.is_updated_geometry:
-                    self.updated_geometries.append(update.id.name)
+                if update.is_updated_geometry and name in self.meshes:
+                    self.updated_geometries.append(name)
         
-        # Aggregate everything visible
+        # Aggregate everything visible in the scene that we care about
         for obj in scene.objects:
             if not obj.visible_get():
                 continue
             
             if obj.type == 'MESH':
-                self.update_mesh(obj, context)
+                self.update_mesh(obj, depsgraph)
             elif obj.type == 'LIGHT':
-                self.update_light(obj, context)
+                self.update_light(obj)
             else:
                 print(obj.type)
                 
         self.meshes = self.updated_meshes
         self.additional_lights = self.updated_additional_lights
     
-    def update_mesh(self, obj, context):
+    def update_mesh(self, obj, depsgraph):
+        rebuild_geometry = obj.name in self.updated_geometries
         if obj.name not in self.meshes:
             mesh = Mesh()
+            rebuild_geometry = True
             print('Add mesh', mesh)
         else:
             mesh = self.meshes[obj.name]
             print('Update mesh', mesh)
 
         mesh.update(obj)
+
+        # Copy updated vertex data to the GPU, IFF changed
+        if rebuild_geometry:
+            mesh.rebuild(obj.evaluated_get(depsgraph), self.shader)
+        
         self.updated_meshes[obj.name] = mesh
         
-        # TODO: Should be object with a mesh ref.
-
-        # For now, dirty/assign every update. TODO Eventually cache.
-        #if obj.name in self.updated_geometries:
-        #    print('**** Dirty mesh', obj)
-        mesh.dirty()
-        
-    def update_light(self, obj, context):
+    def update_light(self, obj):
         light_type = obj.data.type 
 
         if light_type == 'SUN':
-            self.update_main_light(obj, context)
+            self.update_main_light(obj)
         elif light_type == 'POINT':
-            self.update_point_light(obj, context)
+            self.update_point_light(obj)
         elif light_type == 'SPOT':
-            self.update_spot_light(obj, context)
+            self.update_spot_light(obj)
         # AREA not supported
 
-    def update_main_light(self, obj, context):
+    def update_main_light(self, obj):
         self.main_light.update(obj)
 
-    def update_point_light(self, obj, context):
+    def update_point_light(self, obj):
         if obj.name not in self.additional_lights:
             light = PointLight()
             print('Add point light', light)
@@ -594,7 +598,7 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         light.update(obj)
         self.updated_additional_lights[obj.name] = light
     
-    def update_spot_light(self, obj, context):
+    def update_spot_light(self, obj):
         if obj.name not in self.additional_lights:
             light = SpotLight()
             print('Add spot light', light)
@@ -701,7 +705,7 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         region3d = context.region_data
         settings = scene.foo
         
-        self.check_shader_reload(context)
+        # self.check_shader_reload(context)
         
         self.bind_display_space_shader(scene)
         self.shader.bind()
