@@ -81,18 +81,20 @@ void main()
 # Skip geometry shader for fallback
 GS_FALLBACK = None
 
-
 def show_message(message = "", title = "Message Box", icon = 'INFO'):
     def draw(self, context):
         self.layout.label(text=message)
 
     bpy.context.window_manager.popup_menu(draw, title = title, icon = icon)
 
+
 class CompileError(Exception):
     pass
-    
+
+
 class LinkError(Exception):
     pass
+
 
 def compile_shader(src: str, type_flag):
     shader = glCreateShader(type_flag)
@@ -111,38 +113,37 @@ def compile_shader(src: str, type_flag):
     length = Buffer(GL_INT, 1)
     infoLog = Buffer(GL_BYTE, [bufferSize])
     glGetShaderInfoLog(shader, bufferSize, length, infoLog)
+
+    if type_flag == GL_VERTEX_SHADER:
+        stype = 'Vertex'
+    elif type_flag == GL_FRAGMENT_SHADER:
+        stype = 'Fragment'
+    elif type_flag == GL_GEOMETRY_SHADER:
+        stype = 'Geometry'
     
     # Reconstruct byte data into a string
     err = ''.join(chr(infoLog[i]) for i in range(length[0]))
-    raise CompileError(err)
-    
+    raise CompileError(stype + ' Shader Error:\n' + err)
+
+
 class Shader:
     """Encapsulate shader compilation and configuration"""
     def __init__(self):
         self.program = None
-        self.is_fallback = False
         self.prev_mtimes = []
 
-    def compile_from_sources(self, vert: str, frag: str, geom: str = None):
-        print('Compiling shader from', vert, frag, geom)
-        
-        self.is_fallback = False
+    def set_sources(self, vert: str, frag: str, geom: str = None):
         self.vert = vert 
         self.frag = frag 
         self.geom = geom
-        self.recompile()
+        # We keep prev_mtimes - in case this was called with the same files
 
     def compile_from_fallback(self):
-        if self.is_fallback: return # Already compiled
-
-        self.is_fallback = True
         self.prev_mtimes = []
         self.compile_from_strings(VS_FALLBACK, FS_FALLBACK, GS_FALLBACK)
 
     def mtimes(self):
         """Aggregate file modication times from sources"""
-        if self.is_fallback: return []
-    
         mtimes = [
             os.stat(self.vert).st_mtime,
             os.stat(self.frag).st_mtime
@@ -260,6 +261,7 @@ class Shader:
         location = glGetAttribLocation(self.program, name)
         glEnableVertexAttribArray(location)
         glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, stride, 0)
+
 
 class Mesh:
     """Minimal representation needed to render a mesh"""
@@ -461,7 +463,7 @@ class Material:
     def bind(self):
         pass
 
-    
+
 class CustomRenderEngine(bpy.types.RenderEngine):
     bl_idname = "foo_renderer"
     bl_label = "Foo Renderer"
@@ -479,15 +481,17 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         self.main_light = MainLight()
         self.additional_lights = dict()
 
-        self.shader = Shader()
+        self.default_shader = Shader()
+        self.user_shader = Shader()
 
-        self.reload_counter = 0
+        # Set the initial shader to the default until we load a user shader
+        self.shader = self.default_shader
 
         try:
-            self.shader.compile_from_fallback()
+            self.default_shader.compile_from_fallback()
         except Exception as e:
-            show_message('Failed to compile fallback shader. Check console', 'Compile Error', 'ERROR')
-            print('--Failed to compile fallback shader--')
+            # show_message('Failed to compile fallback shader. Check console', 'Compile Error', 'ERROR')
+            print('--Failed to compile default shader--')
             print(e)
     
     # When the render engine instance is destroy, this is called. Clean up any
@@ -499,31 +503,33 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         """Handle final render (F12) and material preview window renders"""
         if not self.shader: return
 
-        scene = depsgraph.scene
-        scale = scene.render.resolution_percentage / 100.0
-        self.size_x = int(scene.render.resolution_x * scale)
-        self.size_y = int(scene.render.resolution_y * scale)
+        # TODO: Implement
 
-        # Fill the render result with a flat color. The framebuffer is
-        # defined as a list of pixels, each pixel itself being a list of
-        # R,G,B,A values.
-        if self.is_preview:
-            color = [0.1, 0.2, 0.1, 1.0]
-        else:
-            color = [0.2, 0.1, 0.1, 1.0]
+        # scene = depsgraph.scene
+        # scale = scene.render.resolution_percentage / 100.0
+        # self.size_x = int(scene.render.resolution_x * scale)
+        # self.size_y = int(scene.render.resolution_y * scale)
 
-        pixel_count = self.size_x * self.size_y
-        rect = [color] * pixel_count
+        # # Fill the render result with a flat color. The framebuffer is
+        # # defined as a list of pixels, each pixel itself being a list of
+        # # R,G,B,A values.
+        # if self.is_preview:
+        #     color = [0.1, 0.2, 0.1, 1.0]
+        # else:
+        #     color = [0.2, 0.1, 0.1, 1.0]
 
-        # Here we write the pixel values to the RenderResult
-        result = self.begin_result(0, 0, self.size_x, self.size_y)
-        layer = result.layers[0].passes["Combined"]
-        layer.rect = rect
-        self.end_result(result)
+        # pixel_count = self.size_x * self.size_y
+        # rect = [color] * pixel_count
+
+        # # Here we write the pixel values to the RenderResult
+        # result = self.begin_result(0, 0, self.size_x, self.size_y)
+        # layer = result.layers[0].passes["Combined"]
+        # layer.rect = rect
+        # self.end_result(result)
 
     def view_update(self, context, depsgraph):
         """Called when a scene or 3D viewport changes"""
-        if not self.shader: return 
+        self.check_shaders(context)
 
         region = context.region
         view3d = context.space_data
@@ -550,7 +556,7 @@ class CustomRenderEngine(bpy.types.RenderEngine):
             elif obj.type == 'LIGHT':
                 self.update_light(obj)
             else:
-                print(obj.type)
+                print('Unhandled scene object type', obj.type)
                 
         self.meshes = self.updated_meshes
         self.additional_lights = self.updated_additional_lights
@@ -560,10 +566,10 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         if obj.name not in self.meshes:
             mesh = Mesh()
             rebuild_geometry = True
-            print('Add mesh', mesh)
+            # print('Add mesh', mesh)
         else:
             mesh = self.meshes[obj.name]
-            print('Update mesh', mesh)
+            # print('Update mesh', mesh)
 
         mesh.update(obj)
 
@@ -609,32 +615,41 @@ class CustomRenderEngine(bpy.types.RenderEngine):
         light.update(obj)
         self.updated_additional_lights[obj.name] = light
     
-    def check_shader_reload(self, context):
+    def check_shaders(self, context):
         """Check if we should reload the shader sources"""
         settings = context.scene.foo
 
-        # Workaround since I can't write back to settings during this phase
-        force_reload = self.reload_counter != settings.reload_counter
+        self.user_shader.set_sources(
+            settings.vert_filename,
+            settings.frag_filename,
+            settings.geom_filename
+        )
+        
+        # Check for readable source files and changes
+        try:
+            has_user_shader_changes = self.user_shader.mtimes_changed()
+        except Exception as e:
+            settings.last_shader_error = str(e)
+            self.shader = self.default_shader
+            return
+
+        print('--- Force reload', settings.force_reload)
+        print('--- Live reload', settings.live_reload)
+        print('--- has changes', has_user_shader_changes)
         
         # Trigger a recompile if we're forcing it or the files on disk
         # have been modified since the last render
-        if force_reload or (settings.live_reload and self.shader.mtimes_changed()):
+        if settings.force_reload or (settings.live_reload and has_user_shader_changes):
+            settings.force_reload = False
             try:
-                self.shader.compile_from_sources(
-                    settings.vert_filename,
-                    settings.frag_filename,
-                    settings.geom_filename
-                )
-                
-                # Unflag reload IFF it successfully compiled
-                self.reload_counter = settings.reload_counter
-                self.last_shader_error = None
+                self.user_shader.recompile()
+                settings.last_shader_error = ''
+                self.shader = self.user_shader
             except Exception as e:
-                show_message('Failed to compile shader. Check console', 'Compile Error', 'ERROR')
                 print('COMPILE ERROR', type(e))
                 print(e)
-                self.last_shader_error = e
-                self.shader.compile_from_fallback()
+                settings.last_shader_error = str(e)
+                self.shader = self.default_shader
 
     def upload_lighting(self):
         """Copy lighting information into shader uniforms
@@ -762,13 +777,13 @@ class CustomRenderEngine(bpy.types.RenderEngine):
 
 def force_shader_reload(self, context):
     """Callback when any of the shader filenames change in FooRenderSettings"""
-    context.scene.foo.reload_counter += 1
+    context.scene.foo.force_reload = True
 
 class FooRendererSettings(PropertyGroup):
     vert_filename: StringProperty(
         name='Vertex Shader',
         description='Source file path',
-        default='D:\\Blender\\default.vert',
+        default=DEFAULT_SHADER_PATH + 'fallback.vert',
         subtype='FILE_PATH',
         update=force_shader_reload
     )
@@ -776,7 +791,7 @@ class FooRendererSettings(PropertyGroup):
     frag_filename: StringProperty(
         name='Fragment Shader',
         description='Source file path',
-        default='D:\\Blender\\default.frag',
+        default=DEFAULT_SHADER_PATH + 'fallback.frag',
         subtype='FILE_PATH',
         update=force_shader_reload
     )
@@ -821,8 +836,12 @@ class FooRendererSettings(PropertyGroup):
         description='color picker'
     )
     
-    reload_counter: IntProperty(
-        name='Reload Counter'
+    force_reload: BoolProperty(
+        name='Force Reload'
+    )
+
+    last_shader_error: StringProperty(
+        name='Last shader error'
     )
     
     @classmethod
@@ -890,7 +909,7 @@ class ReloadSourcesOperator(bpy.types.Operator):
 
     def invoke(self, context, event):
         print('call invoke')
-        context.scene.foo.reload_counter += 1
+        context.scene.foo.force_reload = True
         
         return {'FINISHED'}
 
@@ -957,10 +976,15 @@ class FOO_RENDER_PT_settings_sources(BaseFooRendererPanel):
         
         col = layout.column(align=True)
         col.alert = True
-        col.label(text='Compilation error: message goes here', icon='ERROR')
-        # TODO: Blender doesn't have text wrapping for this to be nice
+
+        if settings.last_shader_error:
+            col.label(text='Compilation error(s):', icon='ERROR')
+            lines = settings.last_shader_error.split('\n')
+            for line in lines:
+                col.label(text=line)
         
-        
+            
+
 class FOO_LIGHT_PT_light(BaseFooRendererPanel):
     bl_label = 'Light'
     bl_context = 'data'
