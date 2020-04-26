@@ -23,13 +23,14 @@ from bpy.types import (
     Panel
 )
 
+DEFAULT_SHADER_PATH = 'D:\\Blender\\GLSLRenderEngine\\shaders\\'
+
 # Fallback shaders if custom shader compilation fails
 VS_FALLBACK = '''
 #version 330 core
 
-uniform mat4 MVP;
+uniform mat4 ModelViewProjectionMatrix;
 uniform mat4 ModelMatrix;
-uniform mat4 CameraMatrix;
 
 in vec3 Position;
 in vec3 Normal;
@@ -41,7 +42,7 @@ out VS_OUT {
 
 void main()
 {
-    gl_Position = MVP * vec4(Position, 1.0);
+    gl_Position = ModelViewProjectionMatrix * vec4(Position, 1.0);
     
     vec3 positionWS = (ModelMatrix * vec4(Position, 1.0)).xyz;
     vec3 normalWS = (ModelMatrix * vec4(Normal, 0)).xyz;
@@ -737,7 +738,7 @@ class CustomRenderEngine(bpy.types.RenderEngine):
             # Set per-mesh uniforms
             self.shader.set_mat4("ModelMatrix", mesh.model_matrix.transposed())
             self.shader.set_mat4("ModelViewMatrix", mv.transposed())
-            self.shader.set_mat4("MVP", mvp.transposed())
+            self.shader.set_mat4("ModelViewProjectionMatrix", mvp.transposed())
             
             # Draw the mesh itself
             mesh.draw(self.shader)

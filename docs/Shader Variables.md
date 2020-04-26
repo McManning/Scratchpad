@@ -26,7 +26,7 @@ Not implemented but planned:
 |mat4|ViewMatrix|
 |mat4|ProjectionMatrix|
 |mat4|ModelViewMatrix|
-|mat4|MVP|
+|mat4|ModelViewProjectionMatrix|
 |mat4|CameraMatrix|View inverse matrix
 
 ## Lighting
