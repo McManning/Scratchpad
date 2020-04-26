@@ -120,7 +120,7 @@ class Shader:
     """Encapsulate shader compilation and configuration"""
     def __init__(self):
         self.program = None
-        self.is_fallback = True
+        self.is_fallback = False
         self.prev_mtimes = []
 
     def compile_from_sources(self, vert: str, frag: str, geom: str = None):
