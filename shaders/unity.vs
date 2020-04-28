@@ -5,7 +5,7 @@ uniform mat4 ModelMatrix;
 uniform mat4 ViewMatrix;
 uniform mat4 ModelViewMatrix;
 uniform mat4 ProjectionMatrix;
-uniform mat4 MVP;
+uniform mat4 ModelViewProjectionMatrix;
 uniform mat4 CameraMatrix; // ViewInverse
 // uniform mat4 NormalMatrix; // WorldInverseTranspose
 
@@ -20,7 +20,7 @@ out VS_OUT {
 void main()
 {
     // gl_Position = ProjectionMatrix * ViewMatrix * ModelMatrix * vec4(position, 1.0);
-    gl_Position = MVP * vec4(Position, 1.0);
+    gl_Position = ModelViewProjectionMatrix * vec4(Position, 1.0);
     
     vec3 cameraPositionWS = CameraMatrix[3].xyz;
     vec3 positionWS = (ModelMatrix * vec4(Position, 1.0)).xyz;
