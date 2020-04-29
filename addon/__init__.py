@@ -25,7 +25,10 @@ _modules = [
     'engine',
 
     'lights',
-    'renderables'
+    'renderables',
+
+    # TODO: Hot reloading of subfolder modules somehow? 
+    'shaders',
 ]
 
 import bpy

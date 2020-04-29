@@ -14,7 +14,13 @@ from .renderables import (
     Material
 )
 
-from .shader import Shader
+from .shaders.base import (
+    Shader,
+    LightData
+)
+
+from .shaders.fallback import FallbackShader
+from .shaders.glsl import GLSLShader
 
 class FooRenderEngine(bpy.types.RenderEngine):
     bl_idname = "foo_renderer"
@@ -26,21 +32,18 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
         Note that multiple instances can exist @ once, e.g. a viewport and final render
         """
-        self.scene_data = None
-        self.draw_data = None
-        
         self.meshes = dict()
-        self.main_light = MainLight()
-        self.additional_lights = dict()
+        self.lights = LightData()
+        self.lights.main_light = MainLight()
 
-        self.default_shader = Shader()
-        self.user_shader = Shader()
+        self.default_shader = FallbackShader()
+        self.user_shader = GLSLShader()
 
         # Set the initial shader to the default until we load a user shader
         self.shader = self.default_shader
 
         try:
-            self.default_shader.compile_from_fallback()
+            self.default_shader.recompile()
         except Exception as e:
             # show_message('Failed to compile fallback shader. Check console', 'Compile Error', 'ERROR')
             print('--Failed to compile default shader--')
@@ -111,7 +114,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
                 print('Unhandled scene object type', obj.type)
                 
         self.meshes = self.updated_meshes
-        self.additional_lights = self.updated_additional_lights
+        self.lights.additional_lights = self.updated_additional_lights
     
     def update_mesh(self, obj, depsgraph):
         rebuild_geometry = obj.name in self.updated_geometries
@@ -143,25 +146,25 @@ class FooRenderEngine(bpy.types.RenderEngine):
         # AREA not supported
 
     def update_main_light(self, obj):
-        self.main_light.update(obj)
+        self.lights.main_light.update(obj)
 
     def update_point_light(self, obj):
-        if obj.name not in self.additional_lights:
+        if obj.name not in self.lights.additional_lights:
             light = PointLight()
             print('Add point light', light)
         else:
-            light = self.additional_lights[obj.name]
+            light = self.lights.additional_lights[obj.name]
             print('Update point light', light)
         
         light.update(obj)
         self.updated_additional_lights[obj.name] = light
     
     def update_spot_light(self, obj):
-        if obj.name not in self.additional_lights:
+        if obj.name not in self.lights.additional_lights:
             light = SpotLight()
             print('Add spot light', light)
         else:
-            light = self.additional_lights[obj.name]
+            light = self.lights.additional_lights[obj.name]
             print('Update spot light', light)
         
         light.update(obj)
@@ -170,15 +173,10 @@ class FooRenderEngine(bpy.types.RenderEngine):
     def check_shaders(self, context):
         """Check if we should reload the shader sources"""
         settings = context.scene.foo
-
-        self.user_shader.set_sources(
-            settings.vert_filename,
-            settings.frag_filename,
-            settings.geom_filename
-        )
         
         # Check for readable source files and changes
         try:
+            self.user_shader.load_from_settings(settings)
             has_user_shader_changes = self.user_shader.mtimes_changed()
         except Exception as e:
             settings.last_shader_error = str(e)
@@ -203,66 +201,6 @@ class FooRenderEngine(bpy.types.RenderEngine):
                 settings.last_shader_error = str(e)
                 self.shader = self.default_shader
 
-    def upload_lighting(self):
-        """Copy lighting information into shader uniforms
-        
-        This is inspired by Unity's LWRP where there is a main directional light
-        and a number of secondary lights packed into an array buffer. 
-
-        This particular implementation doesn't account for anything advanced
-        like shadows, light cookies, etc. 
-        """
-        limit = 16
-
-        positions = [0] * (limit * 4)
-        directions = [0] * (limit * 4)
-        colors = [0] * (limit * 4)
-        attenuations = [0] * (limit * 4)
-
-        # Feed lights into buffers
-        i = 0
-        for light in self.additional_lights.values():
-            # print('Light', i)
-            v = light.position
-            # print('    Position', v)
-            positions[i * 4] = v[0]
-            positions[i * 4 + 1] = v[1]
-            positions[i * 4 + 2] = v[2]
-            positions[i * 4 + 3] = v[3]
-            
-            v = light.direction
-            # print('    Direction', v)
-            directions[i * 4] = v[0]
-            directions[i * 4 + 1] = v[1]
-            directions[i * 4 + 2] = v[2]
-            directions[i * 4 + 3] = v[3]
-
-            v = light.color
-            # print('    Color', v)
-            colors[i * 4] = v[0]
-            colors[i * 4 + 1] = v[1]
-            colors[i * 4 + 2] = v[2]
-            colors[i * 4 + 3] = v[3]
-
-            v = light.attenuation
-            # print('    Attenuation', v)
-            attenuations[i * 4] = v[0]
-            attenuations[i * 4 + 1] = v[1]
-            attenuations[i * 4 + 2] = v[2]
-            attenuations[i * 4 + 3] = v[3]
-
-            i += 1
-        
-        if self.main_light:
-            self.shader.set_vec4("_MainLightDirection", self.main_light.direction)
-            self.shader.set_vec4("_MainLightColor", self.main_light.color)
-
-        self.shader.set_int("_AdditionalLightsCount", i)
-        self.shader.set_vec4_array("_AdditionalLightsPosition", positions)
-        self.shader.set_vec4_array("_AdditionalLightsColor", colors)
-        self.shader.set_vec4_array("_AdditionalLightsSpotDir", directions)
-        self.shader.set_vec4_array("_AdditionalLightsAttenuation", attenuations)
-
     def view_draw(self, context, depsgraph):
         """Called whenever Blender redraws the 3D viewport"""
         if not self.shader: return 
@@ -274,9 +212,6 @@ class FooRenderEngine(bpy.types.RenderEngine):
         
         # self.check_shader_reload(context)
         
-        self.bind_display_space_shader(scene)
-        self.shader.bind()
-        
         # viewport = [region.x, region.y, region.width, region.height]
         
         # view_matrix = region3d.view_matrix # transposed GL_MODELVIEW_MATRIX
@@ -284,14 +219,15 @@ class FooRenderEngine(bpy.types.RenderEngine):
         # cam_pos = view_matrix_inv * Vector((0.0, 0.0, 0.0))
         # cam_dir = (view_matrix_inv * Vector((0.0, 0.0, -1.0))) - cam_pos        
         
-        # Set up MVP matrices
-        self.shader.set_mat4("ViewMatrix", region3d.view_matrix.transposed())
-        self.shader.set_mat4("ProjectionMatrix", region3d.window_matrix.transposed())
-        self.shader.set_mat4("CameraMatrix", region3d.view_matrix.inverted().transposed())
+        self.bind_display_space_shader(scene)
+        self.shader.bind()
+        
+        self.shader.set_camera_matrices(
+            region3d.view_matrix,
+            region3d.window_matrix
+        )
 
-        # Upload current light information
-        self.upload_lighting()
-        self.shader.set_vec3("_AmbientColor", settings.ambient_color)
+        self.shader.set_lights(self.lights)
 
         glEnable(GL_DEPTH_TEST)
         
@@ -303,15 +239,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
         for mesh in self.meshes.values():
-            mv = region3d.view_matrix @ mesh.model_matrix
-            mvp = region3d.window_matrix @ mv
-
-            # Set per-mesh uniforms
-            self.shader.set_mat4("ModelMatrix", mesh.model_matrix.transposed())
-            self.shader.set_mat4("ModelViewMatrix", mv.transposed())
-            self.shader.set_mat4("ModelViewProjectionMatrix", mvp.transposed())
-            
-            # Draw the mesh itself
+            self.shader.set_object_matrices(mesh.model_matrix)
             mesh.draw(self.shader)
 
         self.shader.unbind()

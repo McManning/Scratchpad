@@ -2,7 +2,6 @@
 import os
 import bpy
 import numpy as np
-import gpu
 from bgl import *
 
 from bpy.types import Panel

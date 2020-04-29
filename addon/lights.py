@@ -91,5 +91,3 @@ class PointLight:
         fade_range_sqr = fade_start_distance_sqr - light_range_sqr
 
         self.attenuation = (1.0 / light_range_sqr, -light_range_sqr / fade_range_sqr, 0, 1)
-
-print('-------------- lights loaded')
