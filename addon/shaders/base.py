@@ -118,6 +118,11 @@ class Shader:
         self.program = None
         self.prev_mtimes = []
         self.monitored_files = []
+        self.properties = ShaderProperties()
+
+    def needs_recompile(self) -> bool:
+        """Does this shader need to be recompiled from updated settings"""
+        return self.mtimes_changed()
 
     def update_mtimes(self):
         self.prev_mtimes = self.mtimes()
@@ -130,26 +135,30 @@ class Shader:
         """Check if the file update time has changed in any of the source files"""
         return self.prev_mtimes != self.mtimes()
 
-    def compile_from_strings(self, vs: str, fs: str, gs: str = None):
-        vertShader = compile_glsl(vs, GL_VERTEX_SHADER)
-        fragShader = compile_glsl(fs, GL_FRAGMENT_SHADER)
-        
-        geomShader = None
-        if gs: geomShader = compile_glsl(gs, GL_GEOMETRY_SHADER)
+    def compile_from_strings(self, vs: str, fs: str, tcs: str = None, tes: str = None, gs: str = None):
+        vs_compiled = compile_glsl(vs, GL_VERTEX_SHADER)
+        fs_compiled = compile_glsl(fs, GL_FRAGMENT_SHADER)
+        tcs_compiled = compile_glsl(gs, GL_TESS_CONTROL_SHADER) if tcs else None
+        tes_compiled = compile_glsl(gs, GL_TESS_EVALUATION_SHADER) if tes else None
+        gs_compiled = compile_glsl(gs, GL_GEOMETRY_SHADER) if gs else None
 
         program = glCreateProgram()
-        glAttachShader(program, vertShader)
-        glAttachShader(program, fragShader)
-        if gs: glAttachShader(program, geomShader)
+        glAttachShader(program, vs_compiled)
+        glAttachShader(program, fs_compiled)
+        if tcs: glAttachShader(program, tcs_compiled)
+        if tes: glAttachShader(program, tes_compiled)
+        if gs: glAttachShader(program, gs_compiled)
             
         glLinkProgram(program)
 
         # Cleanup shaders
-        glDeleteShader(vertShader)
-        glDeleteShader(fragShader)
-        if gs: glDeleteShader(geomShader)
+        glDeleteShader(vs_compiled)
+        glDeleteShader(fs_compiled)
+        if tcs: glDeleteShader(tcs_compiled)
+        if tes: glDeleteShader(tes_compiled)
+        if gs: glDeleteShader(gs_compiled)
 
-        #Check for link errors
+        # Check for link errors
         link_ok = Buffer(GL_INT, 1)
         glGetProgramiv(program, GL_LINK_STATUS, link_ok)
 

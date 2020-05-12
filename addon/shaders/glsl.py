@@ -14,46 +14,70 @@ class GLSLShader(Shader):
     """Direct GLSL shader from GLSL source files"""
     name = 'GLSL'
 
-    def load_from_settings(self, settings):
-        self.vert = settings.vert_filename 
-        self.frag = settings.frag_filename 
-        self.geom = settings.geom_filename 
-        
-        if not os.path.isfile(self.vert):
+    # Version directive to automatically add to source files
+    COMPAT_VERSION = '330 core'
+
+    # Maximum lights to send to shaders as _AdditionalLights* uniforms
+    MAX_ADDITIONAL_LIGHTS = 16
+
+    def update_settings(self, settings):
+        if not os.path.isfile(settings.vert_filename):
             raise FileNotFoundError('Missing required vertex shader')
             
-        if not os.path.isfile(self.frag):
+        if not os.path.isfile(settings.frag_filename):
             raise FileNotFoundError('Missing required fragment shader')
         
-        self.monitored_files = [
-            settings.vert_filename,
-            settings.frag_filename
-        ]
-
-        if self.geom:
-            self.monitored_files.append(self.geom)
-
+        self.stages = { 
+            'vs': settings.vert_filename,
+            'fs': settings.frag_filename,
+            'tcs': settings.tesc_filename, 
+            'tes': settings.tese_filename,
+            'gs': settings.geom_filename
+        }
+        
+        self.monitored_files = [f for f in self.stages.values() if f]
         # We keep prev_mtimes - in case this was called with the same files
 
-    def get_settings(self) -> ShaderData:
-        # No settings
-        return None
+    def update_shader_properties(self, settings):
+        self.properties.from_property_group(settings)
 
     def recompile(self):
-        # TODO: Integrate load_shader()
-        with open(self.vert) as f:
-            vs = f.read()
+        sources = {}
+
+        # Mapping between a shader stage and array of include files.
+        # Used for resolving the source of compilation errors
+        # TODO: Implement as part of the compilation process - somehow.
+        # (Probably as a feature of base shader - since everything can do this)
+        self.includes = {}
         
-        with open(self.frag) as f:
-            fs = f.read()
-        
-        gs = None
-        if (self.geom):
-            with open(self.geom) as f:
-                gs = f.read()
-                
-        self.compile_from_strings(vs, fs, gs)
+        preprocessor = GLSLPreprocessor()
+
+        for stage, filename in self.stages.items():
+            source = None
+            if filename:
+                # TODO: Stage defines (e.g. #define VERTEX - useful?)
+                source = preprocessor.parse_file(filename)
+                self.includes[stage] = preprocessor.includes
+
+            sources[stage] = source
+
+        self.compile_from_strings(
+            sources['vs'], 
+            sources['fs'], 
+            sources['tcs'], 
+            sources['tes'], 
+            sources['gs']
+        )
+
+        # GLSL shaders have no additional properties
+        self.properties.clear()
         self.update_mtimes()
+
+    def bind(self):
+        super(GLSLShader, self).bind()
+
+        # TODO: Doesn't work, number too big. Change this up
+        # self.set_float("_Time", time())
 
     def set_camera_matrices(self, view_matrix, projection_matrix):
         self.view_matrix = view_matrix
@@ -80,7 +104,7 @@ class GLSLShader(Shader):
         This particular implementation doesn't account for anything advanced
         like shadows, light cookies, etc. 
         """
-        limit = 16
+        limit = self.MAX_ADDITIONAL_LIGHTS
 
         positions = [0] * (limit * 4)
         directions = [0] * (limit * 4)

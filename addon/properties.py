@@ -34,14 +34,6 @@ class FooRendererSettings(PropertyGroup):
         update=force_shader_reload
     )
     
-    geom_filename: StringProperty(
-        name='Geometry',
-        description='GLSL geometry shader source file',
-        default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
-    )
-    
     tesc_filename: StringProperty(
         name='Tessellation Control',
         description='GLSL tessellation control shader source file',
@@ -58,6 +50,15 @@ class FooRendererSettings(PropertyGroup):
         update=force_shader_reload
     )
     
+    geom_filename: StringProperty(
+        name='Geometry',
+        description='GLSL geometry shader source file',
+        default='',
+        subtype='FILE_PATH',
+        update=force_shader_reload
+    )
+    
+    # Common properties
     live_reload: BoolProperty(
         name='Live Reload',
         description='Reload source files on change',

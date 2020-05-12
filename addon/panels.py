@@ -59,18 +59,24 @@ class FOO_RENDER_PT_settings_sources(BasePanel):
         settings = context.scene.foo
 
         col = layout.column(align=True)
-        col.prop(settings, 'vert_filename')
-        col.prop(settings, 'frag_filename')
-        col.prop(settings, 'tesc_filename')
-        col.prop(settings, 'tese_filename')
-        col.prop(settings, 'geom_filename')
-        
+        col.prop(settings, 'loader')
+
+        # Per-loader settings
+        if settings.loader == 'glsl':
+            col.prop(settings, 'vert_filename')
+            col.prop(settings, 'frag_filename')
+            col.prop(settings, 'tesc_filename')
+            col.prop(settings, 'tese_filename')
+            col.prop(settings, 'geom_filename')
+        elif settings.loader == 'ogsfx':
+            col.prop(settings, 'ogsfx_filename')
+
         layout.separator()
-         
+
         col = layout.column(align=True)
         row = col.row(align=True)
         row.prop(settings, "live_reload", text="Live Reload")
-        row.operator("foo.reload_sources", text = "Reload")
+        row.operator("foo.reload_sources", text="Reload")
         
         # col = layout.column(align=True)
         # col.alignment = 'RIGHT'
