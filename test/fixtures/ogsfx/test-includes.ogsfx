@@ -1,0 +1,16 @@
+
+// OGSFX include file
+#include "include.ogsfh"
+
+attribute APPDATA {
+    vec4 position : POSITION;
+}
+
+GLSLShader VS {
+    // GLSL include file
+    #include "../glsl/include.glslv"
+
+    void main() {
+        gl_Position = gMVP * position;
+    }
+}

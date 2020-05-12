@@ -1,0 +1,22 @@
+
+uniform float foo;
+
+uniform mat4 gMVP : WorldViewProjection;
+
+uniform int intWithDefault = 5;
+
+uniform vec4 vecWithDefault = { 0.1, 0.1, 0.5, 0.3 };
+
+uniform vec2 vecWithAliasAndDefault : AliasName = { 1.0, 2.5 };
+
+uniform Texture2D gColorTex;  // texture 
+
+uniform float annotated <
+    string Foo = "foo";
+    float Bar = 5.0;
+    bool IsCool = true;
+> = 4.15;
+
+uniform sampler2D gColorTexSampler = sampler_state {
+    Texture = <gColorTex>;
+};

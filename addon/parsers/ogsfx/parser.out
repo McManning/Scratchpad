@@ -1,0 +1,1892 @@
+Created by PLY version 3.11 (http://www.dabeaz.com/ply)
+
+Unused terminals:
+
+    COMMENT
+    CPPCOMMENT
+    LBRACKET
+    PREPROCESSOR
+    RBRACKET
+
+Grammar
+
+Rule 0     S' -> shader
+Rule 1     shader -> block_list
+Rule 2     block_list -> block
+Rule 3     block_list -> block_list block
+Rule 4     block -> GLSL
+Rule 5     block -> technique
+Rule 6     block -> uniform
+Rule 7     block -> attribute_struct
+Rule 8     technique -> TECHNIQUE ID annotations_opt LBRACE pass_list RBRACE
+Rule 9     pass -> PASS ID annotations_opt LBRACE stage_list RBRACE
+Rule 10    pass_list -> pass
+Rule 11    pass_list -> pass_list pass
+Rule 12    id_list -> ID
+Rule 13    id_list -> id_list COMMA ID
+Rule 14    shader_id_list -> ID
+Rule 15    shader_id_list -> LBRACE id_list RBRACE
+Rule 16    stage_name -> VERTEXSHADER
+Rule 17    stage_name -> TESSCONTROLSHADER
+Rule 18    stage_name -> TESSEVALSHADER
+Rule 19    stage_name -> GEOMETRYSHADER
+Rule 20    stage_name -> PIXELSHADER
+Rule 21    stage_argument -> IN ID ID
+Rule 22    stage_argument -> OUT ID ID
+Rule 23    stage_argument -> IN ID
+Rule 24    stage_argument -> OUT ID
+Rule 25    stage -> stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI
+Rule 26    stage_list -> stage
+Rule 27    stage_list -> stage_list stage
+Rule 28    empty -> <empty>
+Rule 29    type_specifier -> FLOAT
+Rule 30    type_specifier -> INT
+Rule 31    type_specifier -> VEC2
+Rule 32    type_specifier -> VEC3
+Rule 33    type_specifier -> VEC4
+Rule 34    type_specifier -> MAT3
+Rule 35    type_specifier -> MAT4
+Rule 36    type_specifier -> TEXTURE2D
+Rule 37    type_specifier -> SAMPLER2D
+Rule 38    number -> INT_CONST
+Rule 39    number -> FLOAT_CONST
+Rule 40    constant_vec2 -> LBRACE number COMMA number RBRACE
+Rule 41    constant_vec3 -> LBRACE number COMMA number COMMA number RBRACE
+Rule 42    constant_vec4 -> LBRACE number COMMA number COMMA number COMMA number RBRACE
+Rule 43    sampler_state -> SAMPLER_STATE LBRACE TEXTURE EQ LT ID GT SEMI RBRACE
+Rule 44    constant -> number
+Rule 45    constant -> constant_vec2
+Rule 46    constant -> constant_vec3
+Rule 47    constant -> constant_vec4
+Rule 48    constant -> sampler_state
+Rule 49    annotation_constant -> number
+Rule 50    annotation_constant -> STRING_CONST
+Rule 51    annotation_constant -> BOOL_CONST
+Rule 52    annotation_constant -> constant_vec2
+Rule 53    annotation_constant -> constant_vec3
+Rule 54    annotation_constant -> constant_vec4
+Rule 55    uniform -> UNIFORM type_specifier ID annotations_opt SEMI
+Rule 56    uniform -> UNIFORM type_specifier ID annotations_opt EQ constant SEMI
+Rule 57    uniform -> UNIFORM type_specifier ID COLON ID SEMI
+Rule 58    uniform -> UNIFORM type_specifier ID COLON ID EQ constant SEMI
+Rule 59    input_specifier -> POSITION
+Rule 60    input_specifier -> NORMAL
+Rule 61    input_specifier -> TANGENT
+Rule 62    input_specifier -> BINORMAL
+Rule 63    input_specifier -> COLOR0
+Rule 64    input_specifier -> TEXCOORD0
+Rule 65    input_specifier -> TEXCOORD1
+Rule 66    input_specifier -> TEXCOORD2
+Rule 67    input_specifier -> TEXCOORD3
+Rule 68    input_specifier -> TEXCOORD4
+Rule 69    input_specifier -> TEXCOORD5
+Rule 70    input_specifier -> TEXCOORD6
+Rule 71    input_specifier -> TEXCOORD7
+Rule 72    attribute -> type_specifier ID COLON input_specifier SEMI
+Rule 73    attribute_list -> attribute
+Rule 74    attribute_list -> attribute_list attribute
+Rule 75    attribute_list_opt -> attribute_list
+Rule 76    attribute_list_opt -> empty
+Rule 77    attribute_struct -> ATTRIBUTE ID LBRACE attribute_list_opt RBRACE SEMI
+Rule 78    annotation_type_specifier -> STRING
+Rule 79    annotation_type_specifier -> INT
+Rule 80    annotation_type_specifier -> FLOAT
+Rule 81    annotation_type_specifier -> BOOL
+Rule 82    annotation -> annotation_type_specifier ID annotation_args_opt EQ annotation_constant SEMI
+Rule 83    annotation -> annotation_type_specifier ID annotation_args_opt SEMI
+Rule 84    annotation_list -> annotation
+Rule 85    annotation_list -> annotation_list annotation
+Rule 86    annotations_opt -> empty
+Rule 87    annotations_opt -> LT annotation_list GT
+Rule 88    annotation_ui_specifier -> COLOR
+Rule 89    annotation_ui_specifier -> RANGE LPAREN number COMMA number RPAREN
+Rule 90    annotation_args -> LPAREN STRING_CONST RPAREN
+Rule 91    annotation_args -> LPAREN STRING_CONST COMMA annotation_ui_specifier RPAREN
+Rule 92    annotation_args_opt -> annotation_args
+Rule 93    annotation_args_opt -> empty
+
+Terminals, with rules where they appear
+
+ATTRIBUTE            : 77
+BINORMAL             : 62
+BOOL                 : 81
+BOOL_CONST           : 51
+COLON                : 57 58 72
+COLOR                : 88
+COLOR0               : 63
+COMMA                : 13 25 40 41 41 42 42 42 89 91
+COMMENT              : 
+CPPCOMMENT           : 
+EQ                   : 25 43 56 58 82
+FLOAT                : 29 80
+FLOAT_CONST          : 39
+GEOMETRYSHADER       : 19
+GLSL                 : 4
+GT                   : 43 87
+ID                   : 8 9 12 13 14 21 21 22 22 23 24 43 55 56 57 57 58 58 72 77 82 83
+IN                   : 21 23
+INT                  : 30 79
+INT_CONST            : 38
+LBRACE               : 8 9 15 40 41 42 43 77
+LBRACKET             : 
+LPAREN               : 25 89 90 91
+LT                   : 43 87
+MAT3                 : 34
+MAT4                 : 35
+NORMAL               : 60
+OUT                  : 22 24
+PASS                 : 9
+PIXELSHADER          : 20
+POSITION             : 59
+PREPROCESSOR         : 
+RANGE                : 89
+RBRACE               : 8 9 15 40 41 42 43 77
+RBRACKET             : 
+RPAREN               : 25 89 90 91
+SAMPLER2D            : 37
+SAMPLER_STATE        : 43
+SEMI                 : 25 43 55 56 57 58 72 77 82 83
+STRING               : 78
+STRING_CONST         : 50 90 91
+TANGENT              : 61
+TECHNIQUE            : 8
+TESSCONTROLSHADER    : 17
+TESSEVALSHADER       : 18
+TEXCOORD0            : 64
+TEXCOORD1            : 65
+TEXCOORD2            : 66
+TEXCOORD3            : 67
+TEXCOORD4            : 68
+TEXCOORD5            : 69
+TEXCOORD6            : 70
+TEXCOORD7            : 71
+TEXTURE              : 43
+TEXTURE2D            : 36
+UNIFORM              : 55 56 57 58
+VEC2                 : 31
+VEC3                 : 32
+VEC4                 : 33
+VERTEXSHADER         : 16
+error                : 
+
+Nonterminals, with rules where they appear
+
+annotation           : 84 85
+annotation_args      : 92
+annotation_args_opt  : 82 83
+annotation_constant  : 82
+annotation_list      : 85 87
+annotation_type_specifier : 82 83
+annotation_ui_specifier : 91
+annotations_opt      : 8 9 55 56
+attribute            : 73 74
+attribute_list       : 74 75
+attribute_list_opt   : 77
+attribute_struct     : 7
+block                : 2 3
+block_list           : 1 3
+constant             : 56 58
+constant_vec2        : 45 52
+constant_vec3        : 46 53
+constant_vec4        : 47 54
+empty                : 76 86 93
+id_list              : 13 15
+input_specifier      : 72
+number               : 40 40 41 41 41 42 42 42 42 44 49 89 89
+pass                 : 10 11
+pass_list            : 8 11
+sampler_state        : 48
+shader               : 0
+shader_id_list       : 25
+stage                : 26 27
+stage_argument       : 25 25
+stage_list           : 9 27
+stage_name           : 25
+technique            : 5
+type_specifier       : 55 56 57 58 72
+uniform              : 6
+
+Parsing method: LALR
+
+state 0
+
+    (0) S' -> . shader
+    (1) shader -> . block_list
+    (2) block_list -> . block
+    (3) block_list -> . block_list block
+    (4) block -> . GLSL
+    (5) block -> . technique
+    (6) block -> . uniform
+    (7) block -> . attribute_struct
+    (8) technique -> . TECHNIQUE ID annotations_opt LBRACE pass_list RBRACE
+    (55) uniform -> . UNIFORM type_specifier ID annotations_opt SEMI
+    (56) uniform -> . UNIFORM type_specifier ID annotations_opt EQ constant SEMI
+    (57) uniform -> . UNIFORM type_specifier ID COLON ID SEMI
+    (58) uniform -> . UNIFORM type_specifier ID COLON ID EQ constant SEMI
+    (77) attribute_struct -> . ATTRIBUTE ID LBRACE attribute_list_opt RBRACE SEMI
+
+    GLSL            shift and go to state 4
+    TECHNIQUE       shift and go to state 8
+    UNIFORM         shift and go to state 9
+    ATTRIBUTE       shift and go to state 10
+
+    shader                         shift and go to state 1
+    block_list                     shift and go to state 2
+    block                          shift and go to state 3
+    technique                      shift and go to state 5
+    uniform                        shift and go to state 6
+    attribute_struct               shift and go to state 7
+
+state 1
+
+    (0) S' -> shader .
+
+
+
+state 2
+
+    (1) shader -> block_list .
+    (3) block_list -> block_list . block
+    (4) block -> . GLSL
+    (5) block -> . technique
+    (6) block -> . uniform
+    (7) block -> . attribute_struct
+    (8) technique -> . TECHNIQUE ID annotations_opt LBRACE pass_list RBRACE
+    (55) uniform -> . UNIFORM type_specifier ID annotations_opt SEMI
+    (56) uniform -> . UNIFORM type_specifier ID annotations_opt EQ constant SEMI
+    (57) uniform -> . UNIFORM type_specifier ID COLON ID SEMI
+    (58) uniform -> . UNIFORM type_specifier ID COLON ID EQ constant SEMI
+    (77) attribute_struct -> . ATTRIBUTE ID LBRACE attribute_list_opt RBRACE SEMI
+
+    $end            reduce using rule 1 (shader -> block_list .)
+    GLSL            shift and go to state 4
+    TECHNIQUE       shift and go to state 8
+    UNIFORM         shift and go to state 9
+    ATTRIBUTE       shift and go to state 10
+
+    block                          shift and go to state 11
+    technique                      shift and go to state 5
+    uniform                        shift and go to state 6
+    attribute_struct               shift and go to state 7
+
+state 3
+
+    (2) block_list -> block .
+
+    GLSL            reduce using rule 2 (block_list -> block .)
+    TECHNIQUE       reduce using rule 2 (block_list -> block .)
+    UNIFORM         reduce using rule 2 (block_list -> block .)
+    ATTRIBUTE       reduce using rule 2 (block_list -> block .)
+    $end            reduce using rule 2 (block_list -> block .)
+
+
+state 4
+
+    (4) block -> GLSL .
+
+    GLSL            reduce using rule 4 (block -> GLSL .)
+    TECHNIQUE       reduce using rule 4 (block -> GLSL .)
+    UNIFORM         reduce using rule 4 (block -> GLSL .)
+    ATTRIBUTE       reduce using rule 4 (block -> GLSL .)
+    $end            reduce using rule 4 (block -> GLSL .)
+
+
+state 5
+
+    (5) block -> technique .
+
+    GLSL            reduce using rule 5 (block -> technique .)
+    TECHNIQUE       reduce using rule 5 (block -> technique .)
+    UNIFORM         reduce using rule 5 (block -> technique .)
+    ATTRIBUTE       reduce using rule 5 (block -> technique .)
+    $end            reduce using rule 5 (block -> technique .)
+
+
+state 6
+
+    (6) block -> uniform .
+
+    GLSL            reduce using rule 6 (block -> uniform .)
+    TECHNIQUE       reduce using rule 6 (block -> uniform .)
+    UNIFORM         reduce using rule 6 (block -> uniform .)
+    ATTRIBUTE       reduce using rule 6 (block -> uniform .)
+    $end            reduce using rule 6 (block -> uniform .)
+
+
+state 7
+
+    (7) block -> attribute_struct .
+
+    GLSL            reduce using rule 7 (block -> attribute_struct .)
+    TECHNIQUE       reduce using rule 7 (block -> attribute_struct .)
+    UNIFORM         reduce using rule 7 (block -> attribute_struct .)
+    ATTRIBUTE       reduce using rule 7 (block -> attribute_struct .)
+    $end            reduce using rule 7 (block -> attribute_struct .)
+
+
+state 8
+
+    (8) technique -> TECHNIQUE . ID annotations_opt LBRACE pass_list RBRACE
+
+    ID              shift and go to state 12
+
+
+state 9
+
+    (55) uniform -> UNIFORM . type_specifier ID annotations_opt SEMI
+    (56) uniform -> UNIFORM . type_specifier ID annotations_opt EQ constant SEMI
+    (57) uniform -> UNIFORM . type_specifier ID COLON ID SEMI
+    (58) uniform -> UNIFORM . type_specifier ID COLON ID EQ constant SEMI
+    (29) type_specifier -> . FLOAT
+    (30) type_specifier -> . INT
+    (31) type_specifier -> . VEC2
+    (32) type_specifier -> . VEC3
+    (33) type_specifier -> . VEC4
+    (34) type_specifier -> . MAT3
+    (35) type_specifier -> . MAT4
+    (36) type_specifier -> . TEXTURE2D
+    (37) type_specifier -> . SAMPLER2D
+
+    FLOAT           shift and go to state 14
+    INT             shift and go to state 15
+    VEC2            shift and go to state 16
+    VEC3            shift and go to state 17
+    VEC4            shift and go to state 18
+    MAT3            shift and go to state 19
+    MAT4            shift and go to state 20
+    TEXTURE2D       shift and go to state 21
+    SAMPLER2D       shift and go to state 22
+
+    type_specifier                 shift and go to state 13
+
+state 10
+
+    (77) attribute_struct -> ATTRIBUTE . ID LBRACE attribute_list_opt RBRACE SEMI
+
+    ID              shift and go to state 23
+
+
+state 11
+
+    (3) block_list -> block_list block .
+
+    GLSL            reduce using rule 3 (block_list -> block_list block .)
+    TECHNIQUE       reduce using rule 3 (block_list -> block_list block .)
+    UNIFORM         reduce using rule 3 (block_list -> block_list block .)
+    ATTRIBUTE       reduce using rule 3 (block_list -> block_list block .)
+    $end            reduce using rule 3 (block_list -> block_list block .)
+
+
+state 12
+
+    (8) technique -> TECHNIQUE ID . annotations_opt LBRACE pass_list RBRACE
+    (86) annotations_opt -> . empty
+    (87) annotations_opt -> . LT annotation_list GT
+    (28) empty -> .
+
+    LT              shift and go to state 26
+    LBRACE          reduce using rule 28 (empty -> .)
+
+    annotations_opt                shift and go to state 24
+    empty                          shift and go to state 25
+
+state 13
+
+    (55) uniform -> UNIFORM type_specifier . ID annotations_opt SEMI
+    (56) uniform -> UNIFORM type_specifier . ID annotations_opt EQ constant SEMI
+    (57) uniform -> UNIFORM type_specifier . ID COLON ID SEMI
+    (58) uniform -> UNIFORM type_specifier . ID COLON ID EQ constant SEMI
+
+    ID              shift and go to state 27
+
+
+state 14
+
+    (29) type_specifier -> FLOAT .
+
+    ID              reduce using rule 29 (type_specifier -> FLOAT .)
+
+
+state 15
+
+    (30) type_specifier -> INT .
+
+    ID              reduce using rule 30 (type_specifier -> INT .)
+
+
+state 16
+
+    (31) type_specifier -> VEC2 .
+
+    ID              reduce using rule 31 (type_specifier -> VEC2 .)
+
+
+state 17
+
+    (32) type_specifier -> VEC3 .
+
+    ID              reduce using rule 32 (type_specifier -> VEC3 .)
+
+
+state 18
+
+    (33) type_specifier -> VEC4 .
+
+    ID              reduce using rule 33 (type_specifier -> VEC4 .)
+
+
+state 19
+
+    (34) type_specifier -> MAT3 .
+
+    ID              reduce using rule 34 (type_specifier -> MAT3 .)
+
+
+state 20
+
+    (35) type_specifier -> MAT4 .
+
+    ID              reduce using rule 35 (type_specifier -> MAT4 .)
+
+
+state 21
+
+    (36) type_specifier -> TEXTURE2D .
+
+    ID              reduce using rule 36 (type_specifier -> TEXTURE2D .)
+
+
+state 22
+
+    (37) type_specifier -> SAMPLER2D .
+
+    ID              reduce using rule 37 (type_specifier -> SAMPLER2D .)
+
+
+state 23
+
+    (77) attribute_struct -> ATTRIBUTE ID . LBRACE attribute_list_opt RBRACE SEMI
+
+    LBRACE          shift and go to state 28
+
+
+state 24
+
+    (8) technique -> TECHNIQUE ID annotations_opt . LBRACE pass_list RBRACE
+
+    LBRACE          shift and go to state 29
+
+
+state 25
+
+    (86) annotations_opt -> empty .
+
+    LBRACE          reduce using rule 86 (annotations_opt -> empty .)
+    SEMI            reduce using rule 86 (annotations_opt -> empty .)
+    EQ              reduce using rule 86 (annotations_opt -> empty .)
+
+
+state 26
+
+    (87) annotations_opt -> LT . annotation_list GT
+    (84) annotation_list -> . annotation
+    (85) annotation_list -> . annotation_list annotation
+    (82) annotation -> . annotation_type_specifier ID annotation_args_opt EQ annotation_constant SEMI
+    (83) annotation -> . annotation_type_specifier ID annotation_args_opt SEMI
+    (78) annotation_type_specifier -> . STRING
+    (79) annotation_type_specifier -> . INT
+    (80) annotation_type_specifier -> . FLOAT
+    (81) annotation_type_specifier -> . BOOL
+
+    STRING          shift and go to state 33
+    INT             shift and go to state 34
+    FLOAT           shift and go to state 35
+    BOOL            shift and go to state 36
+
+    annotation_list                shift and go to state 30
+    annotation                     shift and go to state 31
+    annotation_type_specifier      shift and go to state 32
+
+state 27
+
+    (55) uniform -> UNIFORM type_specifier ID . annotations_opt SEMI
+    (56) uniform -> UNIFORM type_specifier ID . annotations_opt EQ constant SEMI
+    (57) uniform -> UNIFORM type_specifier ID . COLON ID SEMI
+    (58) uniform -> UNIFORM type_specifier ID . COLON ID EQ constant SEMI
+    (86) annotations_opt -> . empty
+    (87) annotations_opt -> . LT annotation_list GT
+    (28) empty -> .
+
+    COLON           shift and go to state 38
+    LT              shift and go to state 26
+    SEMI            reduce using rule 28 (empty -> .)
+    EQ              reduce using rule 28 (empty -> .)
+
+    annotations_opt                shift and go to state 37
+    empty                          shift and go to state 25
+
+state 28
+
+    (77) attribute_struct -> ATTRIBUTE ID LBRACE . attribute_list_opt RBRACE SEMI
+    (75) attribute_list_opt -> . attribute_list
+    (76) attribute_list_opt -> . empty
+    (73) attribute_list -> . attribute
+    (74) attribute_list -> . attribute_list attribute
+    (28) empty -> .
+    (72) attribute -> . type_specifier ID COLON input_specifier SEMI
+    (29) type_specifier -> . FLOAT
+    (30) type_specifier -> . INT
+    (31) type_specifier -> . VEC2
+    (32) type_specifier -> . VEC3
+    (33) type_specifier -> . VEC4
+    (34) type_specifier -> . MAT3
+    (35) type_specifier -> . MAT4
+    (36) type_specifier -> . TEXTURE2D
+    (37) type_specifier -> . SAMPLER2D
+
+    RBRACE          reduce using rule 28 (empty -> .)
+    FLOAT           shift and go to state 14
+    INT             shift and go to state 15
+    VEC2            shift and go to state 16
+    VEC3            shift and go to state 17
+    VEC4            shift and go to state 18
+    MAT3            shift and go to state 19
+    MAT4            shift and go to state 20
+    TEXTURE2D       shift and go to state 21
+    SAMPLER2D       shift and go to state 22
+
+    attribute_list_opt             shift and go to state 39
+    attribute_list                 shift and go to state 40
+    empty                          shift and go to state 41
+    attribute                      shift and go to state 42
+    type_specifier                 shift and go to state 43
+
+state 29
+
+    (8) technique -> TECHNIQUE ID annotations_opt LBRACE . pass_list RBRACE
+    (10) pass_list -> . pass
+    (11) pass_list -> . pass_list pass
+    (9) pass -> . PASS ID annotations_opt LBRACE stage_list RBRACE
+
+    PASS            shift and go to state 46
+
+    pass_list                      shift and go to state 44
+    pass                           shift and go to state 45
+
+state 30
+
+    (87) annotations_opt -> LT annotation_list . GT
+    (85) annotation_list -> annotation_list . annotation
+    (82) annotation -> . annotation_type_specifier ID annotation_args_opt EQ annotation_constant SEMI
+    (83) annotation -> . annotation_type_specifier ID annotation_args_opt SEMI
+    (78) annotation_type_specifier -> . STRING
+    (79) annotation_type_specifier -> . INT
+    (80) annotation_type_specifier -> . FLOAT
+    (81) annotation_type_specifier -> . BOOL
+
+    GT              shift and go to state 47
+    STRING          shift and go to state 33
+    INT             shift and go to state 34
+    FLOAT           shift and go to state 35
+    BOOL            shift and go to state 36
+
+    annotation                     shift and go to state 48
+    annotation_type_specifier      shift and go to state 32
+
+state 31
+
+    (84) annotation_list -> annotation .
+
+    GT              reduce using rule 84 (annotation_list -> annotation .)
+    STRING          reduce using rule 84 (annotation_list -> annotation .)
+    INT             reduce using rule 84 (annotation_list -> annotation .)
+    FLOAT           reduce using rule 84 (annotation_list -> annotation .)
+    BOOL            reduce using rule 84 (annotation_list -> annotation .)
+
+
+state 32
+
+    (82) annotation -> annotation_type_specifier . ID annotation_args_opt EQ annotation_constant SEMI
+    (83) annotation -> annotation_type_specifier . ID annotation_args_opt SEMI
+
+    ID              shift and go to state 49
+
+
+state 33
+
+    (78) annotation_type_specifier -> STRING .
+
+    ID              reduce using rule 78 (annotation_type_specifier -> STRING .)
+
+
+state 34
+
+    (79) annotation_type_specifier -> INT .
+
+    ID              reduce using rule 79 (annotation_type_specifier -> INT .)
+
+
+state 35
+
+    (80) annotation_type_specifier -> FLOAT .
+
+    ID              reduce using rule 80 (annotation_type_specifier -> FLOAT .)
+
+
+state 36
+
+    (81) annotation_type_specifier -> BOOL .
+
+    ID              reduce using rule 81 (annotation_type_specifier -> BOOL .)
+
+
+state 37
+
+    (55) uniform -> UNIFORM type_specifier ID annotations_opt . SEMI
+    (56) uniform -> UNIFORM type_specifier ID annotations_opt . EQ constant SEMI
+
+    SEMI            shift and go to state 50
+    EQ              shift and go to state 51
+
+
+state 38
+
+    (57) uniform -> UNIFORM type_specifier ID COLON . ID SEMI
+    (58) uniform -> UNIFORM type_specifier ID COLON . ID EQ constant SEMI
+
+    ID              shift and go to state 52
+
+
+state 39
+
+    (77) attribute_struct -> ATTRIBUTE ID LBRACE attribute_list_opt . RBRACE SEMI
+
+    RBRACE          shift and go to state 53
+
+
+state 40
+
+    (75) attribute_list_opt -> attribute_list .
+    (74) attribute_list -> attribute_list . attribute
+    (72) attribute -> . type_specifier ID COLON input_specifier SEMI
+    (29) type_specifier -> . FLOAT
+    (30) type_specifier -> . INT
+    (31) type_specifier -> . VEC2
+    (32) type_specifier -> . VEC3
+    (33) type_specifier -> . VEC4
+    (34) type_specifier -> . MAT3
+    (35) type_specifier -> . MAT4
+    (36) type_specifier -> . TEXTURE2D
+    (37) type_specifier -> . SAMPLER2D
+
+    RBRACE          reduce using rule 75 (attribute_list_opt -> attribute_list .)
+    FLOAT           shift and go to state 14
+    INT             shift and go to state 15
+    VEC2            shift and go to state 16
+    VEC3            shift and go to state 17
+    VEC4            shift and go to state 18
+    MAT3            shift and go to state 19
+    MAT4            shift and go to state 20
+    TEXTURE2D       shift and go to state 21
+    SAMPLER2D       shift and go to state 22
+
+    attribute                      shift and go to state 54
+    type_specifier                 shift and go to state 43
+
+state 41
+
+    (76) attribute_list_opt -> empty .
+
+    RBRACE          reduce using rule 76 (attribute_list_opt -> empty .)
+
+
+state 42
+
+    (73) attribute_list -> attribute .
+
+    FLOAT           reduce using rule 73 (attribute_list -> attribute .)
+    INT             reduce using rule 73 (attribute_list -> attribute .)
+    VEC2            reduce using rule 73 (attribute_list -> attribute .)
+    VEC3            reduce using rule 73 (attribute_list -> attribute .)
+    VEC4            reduce using rule 73 (attribute_list -> attribute .)
+    MAT3            reduce using rule 73 (attribute_list -> attribute .)
+    MAT4            reduce using rule 73 (attribute_list -> attribute .)
+    TEXTURE2D       reduce using rule 73 (attribute_list -> attribute .)
+    SAMPLER2D       reduce using rule 73 (attribute_list -> attribute .)
+    RBRACE          reduce using rule 73 (attribute_list -> attribute .)
+
+
+state 43
+
+    (72) attribute -> type_specifier . ID COLON input_specifier SEMI
+
+    ID              shift and go to state 55
+
+
+state 44
+
+    (8) technique -> TECHNIQUE ID annotations_opt LBRACE pass_list . RBRACE
+    (11) pass_list -> pass_list . pass
+    (9) pass -> . PASS ID annotations_opt LBRACE stage_list RBRACE
+
+    RBRACE          shift and go to state 56
+    PASS            shift and go to state 46
+
+    pass                           shift and go to state 57
+
+state 45
+
+    (10) pass_list -> pass .
+
+    RBRACE          reduce using rule 10 (pass_list -> pass .)
+    PASS            reduce using rule 10 (pass_list -> pass .)
+
+
+state 46
+
+    (9) pass -> PASS . ID annotations_opt LBRACE stage_list RBRACE
+
+    ID              shift and go to state 58
+
+
+state 47
+
+    (87) annotations_opt -> LT annotation_list GT .
+
+    LBRACE          reduce using rule 87 (annotations_opt -> LT annotation_list GT .)
+    SEMI            reduce using rule 87 (annotations_opt -> LT annotation_list GT .)
+    EQ              reduce using rule 87 (annotations_opt -> LT annotation_list GT .)
+
+
+state 48
+
+    (85) annotation_list -> annotation_list annotation .
+
+    GT              reduce using rule 85 (annotation_list -> annotation_list annotation .)
+    STRING          reduce using rule 85 (annotation_list -> annotation_list annotation .)
+    INT             reduce using rule 85 (annotation_list -> annotation_list annotation .)
+    FLOAT           reduce using rule 85 (annotation_list -> annotation_list annotation .)
+    BOOL            reduce using rule 85 (annotation_list -> annotation_list annotation .)
+
+
+state 49
+
+    (82) annotation -> annotation_type_specifier ID . annotation_args_opt EQ annotation_constant SEMI
+    (83) annotation -> annotation_type_specifier ID . annotation_args_opt SEMI
+    (92) annotation_args_opt -> . annotation_args
+    (93) annotation_args_opt -> . empty
+    (90) annotation_args -> . LPAREN STRING_CONST RPAREN
+    (91) annotation_args -> . LPAREN STRING_CONST COMMA annotation_ui_specifier RPAREN
+    (28) empty -> .
+
+    LPAREN          shift and go to state 62
+    EQ              reduce using rule 28 (empty -> .)
+    SEMI            reduce using rule 28 (empty -> .)
+
+    annotation_args_opt            shift and go to state 59
+    annotation_args                shift and go to state 60
+    empty                          shift and go to state 61
+
+state 50
+
+    (55) uniform -> UNIFORM type_specifier ID annotations_opt SEMI .
+
+    GLSL            reduce using rule 55 (uniform -> UNIFORM type_specifier ID annotations_opt SEMI .)
+    TECHNIQUE       reduce using rule 55 (uniform -> UNIFORM type_specifier ID annotations_opt SEMI .)
+    UNIFORM         reduce using rule 55 (uniform -> UNIFORM type_specifier ID annotations_opt SEMI .)
+    ATTRIBUTE       reduce using rule 55 (uniform -> UNIFORM type_specifier ID annotations_opt SEMI .)
+    $end            reduce using rule 55 (uniform -> UNIFORM type_specifier ID annotations_opt SEMI .)
+
+
+state 51
+
+    (56) uniform -> UNIFORM type_specifier ID annotations_opt EQ . constant SEMI
+    (44) constant -> . number
+    (45) constant -> . constant_vec2
+    (46) constant -> . constant_vec3
+    (47) constant -> . constant_vec4
+    (48) constant -> . sampler_state
+    (38) number -> . INT_CONST
+    (39) number -> . FLOAT_CONST
+    (40) constant_vec2 -> . LBRACE number COMMA number RBRACE
+    (41) constant_vec3 -> . LBRACE number COMMA number COMMA number RBRACE
+    (42) constant_vec4 -> . LBRACE number COMMA number COMMA number COMMA number RBRACE
+    (43) sampler_state -> . SAMPLER_STATE LBRACE TEXTURE EQ LT ID GT SEMI RBRACE
+
+    INT_CONST       shift and go to state 69
+    FLOAT_CONST     shift and go to state 70
+    LBRACE          shift and go to state 71
+    SAMPLER_STATE   shift and go to state 72
+
+    constant                       shift and go to state 63
+    number                         shift and go to state 64
+    constant_vec2                  shift and go to state 65
+    constant_vec3                  shift and go to state 66
+    constant_vec4                  shift and go to state 67
+    sampler_state                  shift and go to state 68
+
+state 52
+
+    (57) uniform -> UNIFORM type_specifier ID COLON ID . SEMI
+    (58) uniform -> UNIFORM type_specifier ID COLON ID . EQ constant SEMI
+
+    SEMI            shift and go to state 73
+    EQ              shift and go to state 74
+
+
+state 53
+
+    (77) attribute_struct -> ATTRIBUTE ID LBRACE attribute_list_opt RBRACE . SEMI
+
+    SEMI            shift and go to state 75
+
+
+state 54
+
+    (74) attribute_list -> attribute_list attribute .
+
+    FLOAT           reduce using rule 74 (attribute_list -> attribute_list attribute .)
+    INT             reduce using rule 74 (attribute_list -> attribute_list attribute .)
+    VEC2            reduce using rule 74 (attribute_list -> attribute_list attribute .)
+    VEC3            reduce using rule 74 (attribute_list -> attribute_list attribute .)
+    VEC4            reduce using rule 74 (attribute_list -> attribute_list attribute .)
+    MAT3            reduce using rule 74 (attribute_list -> attribute_list attribute .)
+    MAT4            reduce using rule 74 (attribute_list -> attribute_list attribute .)
+    TEXTURE2D       reduce using rule 74 (attribute_list -> attribute_list attribute .)
+    SAMPLER2D       reduce using rule 74 (attribute_list -> attribute_list attribute .)
+    RBRACE          reduce using rule 74 (attribute_list -> attribute_list attribute .)
+
+
+state 55
+
+    (72) attribute -> type_specifier ID . COLON input_specifier SEMI
+
+    COLON           shift and go to state 76
+
+
+state 56
+
+    (8) technique -> TECHNIQUE ID annotations_opt LBRACE pass_list RBRACE .
+
+    GLSL            reduce using rule 8 (technique -> TECHNIQUE ID annotations_opt LBRACE pass_list RBRACE .)
+    TECHNIQUE       reduce using rule 8 (technique -> TECHNIQUE ID annotations_opt LBRACE pass_list RBRACE .)
+    UNIFORM         reduce using rule 8 (technique -> TECHNIQUE ID annotations_opt LBRACE pass_list RBRACE .)
+    ATTRIBUTE       reduce using rule 8 (technique -> TECHNIQUE ID annotations_opt LBRACE pass_list RBRACE .)
+    $end            reduce using rule 8 (technique -> TECHNIQUE ID annotations_opt LBRACE pass_list RBRACE .)
+
+
+state 57
+
+    (11) pass_list -> pass_list pass .
+
+    RBRACE          reduce using rule 11 (pass_list -> pass_list pass .)
+    PASS            reduce using rule 11 (pass_list -> pass_list pass .)
+
+
+state 58
+
+    (9) pass -> PASS ID . annotations_opt LBRACE stage_list RBRACE
+    (86) annotations_opt -> . empty
+    (87) annotations_opt -> . LT annotation_list GT
+    (28) empty -> .
+
+    LT              shift and go to state 26
+    LBRACE          reduce using rule 28 (empty -> .)
+
+    annotations_opt                shift and go to state 77
+    empty                          shift and go to state 25
+
+state 59
+
+    (82) annotation -> annotation_type_specifier ID annotation_args_opt . EQ annotation_constant SEMI
+    (83) annotation -> annotation_type_specifier ID annotation_args_opt . SEMI
+
+    EQ              shift and go to state 78
+    SEMI            shift and go to state 79
+
+
+state 60
+
+    (92) annotation_args_opt -> annotation_args .
+
+    EQ              reduce using rule 92 (annotation_args_opt -> annotation_args .)
+    SEMI            reduce using rule 92 (annotation_args_opt -> annotation_args .)
+
+
+state 61
+
+    (93) annotation_args_opt -> empty .
+
+    EQ              reduce using rule 93 (annotation_args_opt -> empty .)
+    SEMI            reduce using rule 93 (annotation_args_opt -> empty .)
+
+
+state 62
+
+    (90) annotation_args -> LPAREN . STRING_CONST RPAREN
+    (91) annotation_args -> LPAREN . STRING_CONST COMMA annotation_ui_specifier RPAREN
+
+    STRING_CONST    shift and go to state 80
+
+
+state 63
+
+    (56) uniform -> UNIFORM type_specifier ID annotations_opt EQ constant . SEMI
+
+    SEMI            shift and go to state 81
+
+
+state 64
+
+    (44) constant -> number .
+
+    SEMI            reduce using rule 44 (constant -> number .)
+
+
+state 65
+
+    (45) constant -> constant_vec2 .
+
+    SEMI            reduce using rule 45 (constant -> constant_vec2 .)
+
+
+state 66
+
+    (46) constant -> constant_vec3 .
+
+    SEMI            reduce using rule 46 (constant -> constant_vec3 .)
+
+
+state 67
+
+    (47) constant -> constant_vec4 .
+
+    SEMI            reduce using rule 47 (constant -> constant_vec4 .)
+
+
+state 68
+
+    (48) constant -> sampler_state .
+
+    SEMI            reduce using rule 48 (constant -> sampler_state .)
+
+
+state 69
+
+    (38) number -> INT_CONST .
+
+    SEMI            reduce using rule 38 (number -> INT_CONST .)
+    COMMA           reduce using rule 38 (number -> INT_CONST .)
+    RBRACE          reduce using rule 38 (number -> INT_CONST .)
+    RPAREN          reduce using rule 38 (number -> INT_CONST .)
+
+
+state 70
+
+    (39) number -> FLOAT_CONST .
+
+    SEMI            reduce using rule 39 (number -> FLOAT_CONST .)
+    COMMA           reduce using rule 39 (number -> FLOAT_CONST .)
+    RBRACE          reduce using rule 39 (number -> FLOAT_CONST .)
+    RPAREN          reduce using rule 39 (number -> FLOAT_CONST .)
+
+
+state 71
+
+    (40) constant_vec2 -> LBRACE . number COMMA number RBRACE
+    (41) constant_vec3 -> LBRACE . number COMMA number COMMA number RBRACE
+    (42) constant_vec4 -> LBRACE . number COMMA number COMMA number COMMA number RBRACE
+    (38) number -> . INT_CONST
+    (39) number -> . FLOAT_CONST
+
+    INT_CONST       shift and go to state 69
+    FLOAT_CONST     shift and go to state 70
+
+    number                         shift and go to state 82
+
+state 72
+
+    (43) sampler_state -> SAMPLER_STATE . LBRACE TEXTURE EQ LT ID GT SEMI RBRACE
+
+    LBRACE          shift and go to state 83
+
+
+state 73
+
+    (57) uniform -> UNIFORM type_specifier ID COLON ID SEMI .
+
+    GLSL            reduce using rule 57 (uniform -> UNIFORM type_specifier ID COLON ID SEMI .)
+    TECHNIQUE       reduce using rule 57 (uniform -> UNIFORM type_specifier ID COLON ID SEMI .)
+    UNIFORM         reduce using rule 57 (uniform -> UNIFORM type_specifier ID COLON ID SEMI .)
+    ATTRIBUTE       reduce using rule 57 (uniform -> UNIFORM type_specifier ID COLON ID SEMI .)
+    $end            reduce using rule 57 (uniform -> UNIFORM type_specifier ID COLON ID SEMI .)
+
+
+state 74
+
+    (58) uniform -> UNIFORM type_specifier ID COLON ID EQ . constant SEMI
+    (44) constant -> . number
+    (45) constant -> . constant_vec2
+    (46) constant -> . constant_vec3
+    (47) constant -> . constant_vec4
+    (48) constant -> . sampler_state
+    (38) number -> . INT_CONST
+    (39) number -> . FLOAT_CONST
+    (40) constant_vec2 -> . LBRACE number COMMA number RBRACE
+    (41) constant_vec3 -> . LBRACE number COMMA number COMMA number RBRACE
+    (42) constant_vec4 -> . LBRACE number COMMA number COMMA number COMMA number RBRACE
+    (43) sampler_state -> . SAMPLER_STATE LBRACE TEXTURE EQ LT ID GT SEMI RBRACE
+
+    INT_CONST       shift and go to state 69
+    FLOAT_CONST     shift and go to state 70
+    LBRACE          shift and go to state 71
+    SAMPLER_STATE   shift and go to state 72
+
+    constant                       shift and go to state 84
+    number                         shift and go to state 64
+    constant_vec2                  shift and go to state 65
+    constant_vec3                  shift and go to state 66
+    constant_vec4                  shift and go to state 67
+    sampler_state                  shift and go to state 68
+
+state 75
+
+    (77) attribute_struct -> ATTRIBUTE ID LBRACE attribute_list_opt RBRACE SEMI .
+
+    GLSL            reduce using rule 77 (attribute_struct -> ATTRIBUTE ID LBRACE attribute_list_opt RBRACE SEMI .)
+    TECHNIQUE       reduce using rule 77 (attribute_struct -> ATTRIBUTE ID LBRACE attribute_list_opt RBRACE SEMI .)
+    UNIFORM         reduce using rule 77 (attribute_struct -> ATTRIBUTE ID LBRACE attribute_list_opt RBRACE SEMI .)
+    ATTRIBUTE       reduce using rule 77 (attribute_struct -> ATTRIBUTE ID LBRACE attribute_list_opt RBRACE SEMI .)
+    $end            reduce using rule 77 (attribute_struct -> ATTRIBUTE ID LBRACE attribute_list_opt RBRACE SEMI .)
+
+
+state 76
+
+    (72) attribute -> type_specifier ID COLON . input_specifier SEMI
+    (59) input_specifier -> . POSITION
+    (60) input_specifier -> . NORMAL
+    (61) input_specifier -> . TANGENT
+    (62) input_specifier -> . BINORMAL
+    (63) input_specifier -> . COLOR0
+    (64) input_specifier -> . TEXCOORD0
+    (65) input_specifier -> . TEXCOORD1
+    (66) input_specifier -> . TEXCOORD2
+    (67) input_specifier -> . TEXCOORD3
+    (68) input_specifier -> . TEXCOORD4
+    (69) input_specifier -> . TEXCOORD5
+    (70) input_specifier -> . TEXCOORD6
+    (71) input_specifier -> . TEXCOORD7
+
+    POSITION        shift and go to state 86
+    NORMAL          shift and go to state 87
+    TANGENT         shift and go to state 88
+    BINORMAL        shift and go to state 89
+    COLOR0          shift and go to state 90
+    TEXCOORD0       shift and go to state 91
+    TEXCOORD1       shift and go to state 92
+    TEXCOORD2       shift and go to state 93
+    TEXCOORD3       shift and go to state 94
+    TEXCOORD4       shift and go to state 95
+    TEXCOORD5       shift and go to state 96
+    TEXCOORD6       shift and go to state 97
+    TEXCOORD7       shift and go to state 98
+
+    input_specifier                shift and go to state 85
+
+state 77
+
+    (9) pass -> PASS ID annotations_opt . LBRACE stage_list RBRACE
+
+    LBRACE          shift and go to state 99
+
+
+state 78
+
+    (82) annotation -> annotation_type_specifier ID annotation_args_opt EQ . annotation_constant SEMI
+    (49) annotation_constant -> . number
+    (50) annotation_constant -> . STRING_CONST
+    (51) annotation_constant -> . BOOL_CONST
+    (52) annotation_constant -> . constant_vec2
+    (53) annotation_constant -> . constant_vec3
+    (54) annotation_constant -> . constant_vec4
+    (38) number -> . INT_CONST
+    (39) number -> . FLOAT_CONST
+    (40) constant_vec2 -> . LBRACE number COMMA number RBRACE
+    (41) constant_vec3 -> . LBRACE number COMMA number COMMA number RBRACE
+    (42) constant_vec4 -> . LBRACE number COMMA number COMMA number COMMA number RBRACE
+
+    STRING_CONST    shift and go to state 102
+    BOOL_CONST      shift and go to state 103
+    INT_CONST       shift and go to state 69
+    FLOAT_CONST     shift and go to state 70
+    LBRACE          shift and go to state 71
+
+    annotation_constant            shift and go to state 100
+    number                         shift and go to state 101
+    constant_vec2                  shift and go to state 104
+    constant_vec3                  shift and go to state 105
+    constant_vec4                  shift and go to state 106
+
+state 79
+
+    (83) annotation -> annotation_type_specifier ID annotation_args_opt SEMI .
+
+    GT              reduce using rule 83 (annotation -> annotation_type_specifier ID annotation_args_opt SEMI .)
+    STRING          reduce using rule 83 (annotation -> annotation_type_specifier ID annotation_args_opt SEMI .)
+    INT             reduce using rule 83 (annotation -> annotation_type_specifier ID annotation_args_opt SEMI .)
+    FLOAT           reduce using rule 83 (annotation -> annotation_type_specifier ID annotation_args_opt SEMI .)
+    BOOL            reduce using rule 83 (annotation -> annotation_type_specifier ID annotation_args_opt SEMI .)
+
+
+state 80
+
+    (90) annotation_args -> LPAREN STRING_CONST . RPAREN
+    (91) annotation_args -> LPAREN STRING_CONST . COMMA annotation_ui_specifier RPAREN
+
+    RPAREN          shift and go to state 107
+    COMMA           shift and go to state 108
+
+
+state 81
+
+    (56) uniform -> UNIFORM type_specifier ID annotations_opt EQ constant SEMI .
+
+    GLSL            reduce using rule 56 (uniform -> UNIFORM type_specifier ID annotations_opt EQ constant SEMI .)
+    TECHNIQUE       reduce using rule 56 (uniform -> UNIFORM type_specifier ID annotations_opt EQ constant SEMI .)
+    UNIFORM         reduce using rule 56 (uniform -> UNIFORM type_specifier ID annotations_opt EQ constant SEMI .)
+    ATTRIBUTE       reduce using rule 56 (uniform -> UNIFORM type_specifier ID annotations_opt EQ constant SEMI .)
+    $end            reduce using rule 56 (uniform -> UNIFORM type_specifier ID annotations_opt EQ constant SEMI .)
+
+
+state 82
+
+    (40) constant_vec2 -> LBRACE number . COMMA number RBRACE
+    (41) constant_vec3 -> LBRACE number . COMMA number COMMA number RBRACE
+    (42) constant_vec4 -> LBRACE number . COMMA number COMMA number COMMA number RBRACE
+
+    COMMA           shift and go to state 109
+
+
+state 83
+
+    (43) sampler_state -> SAMPLER_STATE LBRACE . TEXTURE EQ LT ID GT SEMI RBRACE
+
+    TEXTURE         shift and go to state 110
+
+
+state 84
+
+    (58) uniform -> UNIFORM type_specifier ID COLON ID EQ constant . SEMI
+
+    SEMI            shift and go to state 111
+
+
+state 85
+
+    (72) attribute -> type_specifier ID COLON input_specifier . SEMI
+
+    SEMI            shift and go to state 112
+
+
+state 86
+
+    (59) input_specifier -> POSITION .
+
+    SEMI            reduce using rule 59 (input_specifier -> POSITION .)
+
+
+state 87
+
+    (60) input_specifier -> NORMAL .
+
+    SEMI            reduce using rule 60 (input_specifier -> NORMAL .)
+
+
+state 88
+
+    (61) input_specifier -> TANGENT .
+
+    SEMI            reduce using rule 61 (input_specifier -> TANGENT .)
+
+
+state 89
+
+    (62) input_specifier -> BINORMAL .
+
+    SEMI            reduce using rule 62 (input_specifier -> BINORMAL .)
+
+
+state 90
+
+    (63) input_specifier -> COLOR0 .
+
+    SEMI            reduce using rule 63 (input_specifier -> COLOR0 .)
+
+
+state 91
+
+    (64) input_specifier -> TEXCOORD0 .
+
+    SEMI            reduce using rule 64 (input_specifier -> TEXCOORD0 .)
+
+
+state 92
+
+    (65) input_specifier -> TEXCOORD1 .
+
+    SEMI            reduce using rule 65 (input_specifier -> TEXCOORD1 .)
+
+
+state 93
+
+    (66) input_specifier -> TEXCOORD2 .
+
+    SEMI            reduce using rule 66 (input_specifier -> TEXCOORD2 .)
+
+
+state 94
+
+    (67) input_specifier -> TEXCOORD3 .
+
+    SEMI            reduce using rule 67 (input_specifier -> TEXCOORD3 .)
+
+
+state 95
+
+    (68) input_specifier -> TEXCOORD4 .
+
+    SEMI            reduce using rule 68 (input_specifier -> TEXCOORD4 .)
+
+
+state 96
+
+    (69) input_specifier -> TEXCOORD5 .
+
+    SEMI            reduce using rule 69 (input_specifier -> TEXCOORD5 .)
+
+
+state 97
+
+    (70) input_specifier -> TEXCOORD6 .
+
+    SEMI            reduce using rule 70 (input_specifier -> TEXCOORD6 .)
+
+
+state 98
+
+    (71) input_specifier -> TEXCOORD7 .
+
+    SEMI            reduce using rule 71 (input_specifier -> TEXCOORD7 .)
+
+
+state 99
+
+    (9) pass -> PASS ID annotations_opt LBRACE . stage_list RBRACE
+    (26) stage_list -> . stage
+    (27) stage_list -> . stage_list stage
+    (25) stage -> . stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI
+    (16) stage_name -> . VERTEXSHADER
+    (17) stage_name -> . TESSCONTROLSHADER
+    (18) stage_name -> . TESSEVALSHADER
+    (19) stage_name -> . GEOMETRYSHADER
+    (20) stage_name -> . PIXELSHADER
+
+    VERTEXSHADER    shift and go to state 116
+    TESSCONTROLSHADER shift and go to state 117
+    TESSEVALSHADER  shift and go to state 118
+    GEOMETRYSHADER  shift and go to state 119
+    PIXELSHADER     shift and go to state 120
+
+    stage_list                     shift and go to state 113
+    stage                          shift and go to state 114
+    stage_name                     shift and go to state 115
+
+state 100
+
+    (82) annotation -> annotation_type_specifier ID annotation_args_opt EQ annotation_constant . SEMI
+
+    SEMI            shift and go to state 121
+
+
+state 101
+
+    (49) annotation_constant -> number .
+
+    SEMI            reduce using rule 49 (annotation_constant -> number .)
+
+
+state 102
+
+    (50) annotation_constant -> STRING_CONST .
+
+    SEMI            reduce using rule 50 (annotation_constant -> STRING_CONST .)
+
+
+state 103
+
+    (51) annotation_constant -> BOOL_CONST .
+
+    SEMI            reduce using rule 51 (annotation_constant -> BOOL_CONST .)
+
+
+state 104
+
+    (52) annotation_constant -> constant_vec2 .
+
+    SEMI            reduce using rule 52 (annotation_constant -> constant_vec2 .)
+
+
+state 105
+
+    (53) annotation_constant -> constant_vec3 .
+
+    SEMI            reduce using rule 53 (annotation_constant -> constant_vec3 .)
+
+
+state 106
+
+    (54) annotation_constant -> constant_vec4 .
+
+    SEMI            reduce using rule 54 (annotation_constant -> constant_vec4 .)
+
+
+state 107
+
+    (90) annotation_args -> LPAREN STRING_CONST RPAREN .
+
+    EQ              reduce using rule 90 (annotation_args -> LPAREN STRING_CONST RPAREN .)
+    SEMI            reduce using rule 90 (annotation_args -> LPAREN STRING_CONST RPAREN .)
+
+
+state 108
+
+    (91) annotation_args -> LPAREN STRING_CONST COMMA . annotation_ui_specifier RPAREN
+    (88) annotation_ui_specifier -> . COLOR
+    (89) annotation_ui_specifier -> . RANGE LPAREN number COMMA number RPAREN
+
+    COLOR           shift and go to state 123
+    RANGE           shift and go to state 124
+
+    annotation_ui_specifier        shift and go to state 122
+
+state 109
+
+    (40) constant_vec2 -> LBRACE number COMMA . number RBRACE
+    (41) constant_vec3 -> LBRACE number COMMA . number COMMA number RBRACE
+    (42) constant_vec4 -> LBRACE number COMMA . number COMMA number COMMA number RBRACE
+    (38) number -> . INT_CONST
+    (39) number -> . FLOAT_CONST
+
+    INT_CONST       shift and go to state 69
+    FLOAT_CONST     shift and go to state 70
+
+    number                         shift and go to state 125
+
+state 110
+
+    (43) sampler_state -> SAMPLER_STATE LBRACE TEXTURE . EQ LT ID GT SEMI RBRACE
+
+    EQ              shift and go to state 126
+
+
+state 111
+
+    (58) uniform -> UNIFORM type_specifier ID COLON ID EQ constant SEMI .
+
+    GLSL            reduce using rule 58 (uniform -> UNIFORM type_specifier ID COLON ID EQ constant SEMI .)
+    TECHNIQUE       reduce using rule 58 (uniform -> UNIFORM type_specifier ID COLON ID EQ constant SEMI .)
+    UNIFORM         reduce using rule 58 (uniform -> UNIFORM type_specifier ID COLON ID EQ constant SEMI .)
+    ATTRIBUTE       reduce using rule 58 (uniform -> UNIFORM type_specifier ID COLON ID EQ constant SEMI .)
+    $end            reduce using rule 58 (uniform -> UNIFORM type_specifier ID COLON ID EQ constant SEMI .)
+
+
+state 112
+
+    (72) attribute -> type_specifier ID COLON input_specifier SEMI .
+
+    FLOAT           reduce using rule 72 (attribute -> type_specifier ID COLON input_specifier SEMI .)
+    INT             reduce using rule 72 (attribute -> type_specifier ID COLON input_specifier SEMI .)
+    VEC2            reduce using rule 72 (attribute -> type_specifier ID COLON input_specifier SEMI .)
+    VEC3            reduce using rule 72 (attribute -> type_specifier ID COLON input_specifier SEMI .)
+    VEC4            reduce using rule 72 (attribute -> type_specifier ID COLON input_specifier SEMI .)
+    MAT3            reduce using rule 72 (attribute -> type_specifier ID COLON input_specifier SEMI .)
+    MAT4            reduce using rule 72 (attribute -> type_specifier ID COLON input_specifier SEMI .)
+    TEXTURE2D       reduce using rule 72 (attribute -> type_specifier ID COLON input_specifier SEMI .)
+    SAMPLER2D       reduce using rule 72 (attribute -> type_specifier ID COLON input_specifier SEMI .)
+    RBRACE          reduce using rule 72 (attribute -> type_specifier ID COLON input_specifier SEMI .)
+
+
+state 113
+
+    (9) pass -> PASS ID annotations_opt LBRACE stage_list . RBRACE
+    (27) stage_list -> stage_list . stage
+    (25) stage -> . stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI
+    (16) stage_name -> . VERTEXSHADER
+    (17) stage_name -> . TESSCONTROLSHADER
+    (18) stage_name -> . TESSEVALSHADER
+    (19) stage_name -> . GEOMETRYSHADER
+    (20) stage_name -> . PIXELSHADER
+
+    RBRACE          shift and go to state 127
+    VERTEXSHADER    shift and go to state 116
+    TESSCONTROLSHADER shift and go to state 117
+    TESSEVALSHADER  shift and go to state 118
+    GEOMETRYSHADER  shift and go to state 119
+    PIXELSHADER     shift and go to state 120
+
+    stage                          shift and go to state 128
+    stage_name                     shift and go to state 115
+
+state 114
+
+    (26) stage_list -> stage .
+
+    RBRACE          reduce using rule 26 (stage_list -> stage .)
+    VERTEXSHADER    reduce using rule 26 (stage_list -> stage .)
+    TESSCONTROLSHADER reduce using rule 26 (stage_list -> stage .)
+    TESSEVALSHADER  reduce using rule 26 (stage_list -> stage .)
+    GEOMETRYSHADER  reduce using rule 26 (stage_list -> stage .)
+    PIXELSHADER     reduce using rule 26 (stage_list -> stage .)
+
+
+state 115
+
+    (25) stage -> stage_name . LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI
+
+    LPAREN          shift and go to state 129
+
+
+state 116
+
+    (16) stage_name -> VERTEXSHADER .
+
+    LPAREN          reduce using rule 16 (stage_name -> VERTEXSHADER .)
+
+
+state 117
+
+    (17) stage_name -> TESSCONTROLSHADER .
+
+    LPAREN          reduce using rule 17 (stage_name -> TESSCONTROLSHADER .)
+
+
+state 118
+
+    (18) stage_name -> TESSEVALSHADER .
+
+    LPAREN          reduce using rule 18 (stage_name -> TESSEVALSHADER .)
+
+
+state 119
+
+    (19) stage_name -> GEOMETRYSHADER .
+
+    LPAREN          reduce using rule 19 (stage_name -> GEOMETRYSHADER .)
+
+
+state 120
+
+    (20) stage_name -> PIXELSHADER .
+
+    LPAREN          reduce using rule 20 (stage_name -> PIXELSHADER .)
+
+
+state 121
+
+    (82) annotation -> annotation_type_specifier ID annotation_args_opt EQ annotation_constant SEMI .
+
+    GT              reduce using rule 82 (annotation -> annotation_type_specifier ID annotation_args_opt EQ annotation_constant SEMI .)
+    STRING          reduce using rule 82 (annotation -> annotation_type_specifier ID annotation_args_opt EQ annotation_constant SEMI .)
+    INT             reduce using rule 82 (annotation -> annotation_type_specifier ID annotation_args_opt EQ annotation_constant SEMI .)
+    FLOAT           reduce using rule 82 (annotation -> annotation_type_specifier ID annotation_args_opt EQ annotation_constant SEMI .)
+    BOOL            reduce using rule 82 (annotation -> annotation_type_specifier ID annotation_args_opt EQ annotation_constant SEMI .)
+
+
+state 122
+
+    (91) annotation_args -> LPAREN STRING_CONST COMMA annotation_ui_specifier . RPAREN
+
+    RPAREN          shift and go to state 130
+
+
+state 123
+
+    (88) annotation_ui_specifier -> COLOR .
+
+    RPAREN          reduce using rule 88 (annotation_ui_specifier -> COLOR .)
+
+
+state 124
+
+    (89) annotation_ui_specifier -> RANGE . LPAREN number COMMA number RPAREN
+
+    LPAREN          shift and go to state 131
+
+
+state 125
+
+    (40) constant_vec2 -> LBRACE number COMMA number . RBRACE
+    (41) constant_vec3 -> LBRACE number COMMA number . COMMA number RBRACE
+    (42) constant_vec4 -> LBRACE number COMMA number . COMMA number COMMA number RBRACE
+
+    RBRACE          shift and go to state 133
+    COMMA           shift and go to state 132
+
+
+state 126
+
+    (43) sampler_state -> SAMPLER_STATE LBRACE TEXTURE EQ . LT ID GT SEMI RBRACE
+
+    LT              shift and go to state 134
+
+
+state 127
+
+    (9) pass -> PASS ID annotations_opt LBRACE stage_list RBRACE .
+
+    RBRACE          reduce using rule 9 (pass -> PASS ID annotations_opt LBRACE stage_list RBRACE .)
+    PASS            reduce using rule 9 (pass -> PASS ID annotations_opt LBRACE stage_list RBRACE .)
+
+
+state 128
+
+    (27) stage_list -> stage_list stage .
+
+    RBRACE          reduce using rule 27 (stage_list -> stage_list stage .)
+    VERTEXSHADER    reduce using rule 27 (stage_list -> stage_list stage .)
+    TESSCONTROLSHADER reduce using rule 27 (stage_list -> stage_list stage .)
+    TESSEVALSHADER  reduce using rule 27 (stage_list -> stage_list stage .)
+    GEOMETRYSHADER  reduce using rule 27 (stage_list -> stage_list stage .)
+    PIXELSHADER     reduce using rule 27 (stage_list -> stage_list stage .)
+
+
+state 129
+
+    (25) stage -> stage_name LPAREN . stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI
+    (21) stage_argument -> . IN ID ID
+    (22) stage_argument -> . OUT ID ID
+    (23) stage_argument -> . IN ID
+    (24) stage_argument -> . OUT ID
+
+    IN              shift and go to state 136
+    OUT             shift and go to state 137
+
+    stage_argument                 shift and go to state 135
+
+state 130
+
+    (91) annotation_args -> LPAREN STRING_CONST COMMA annotation_ui_specifier RPAREN .
+
+    EQ              reduce using rule 91 (annotation_args -> LPAREN STRING_CONST COMMA annotation_ui_specifier RPAREN .)
+    SEMI            reduce using rule 91 (annotation_args -> LPAREN STRING_CONST COMMA annotation_ui_specifier RPAREN .)
+
+
+state 131
+
+    (89) annotation_ui_specifier -> RANGE LPAREN . number COMMA number RPAREN
+    (38) number -> . INT_CONST
+    (39) number -> . FLOAT_CONST
+
+    INT_CONST       shift and go to state 69
+    FLOAT_CONST     shift and go to state 70
+
+    number                         shift and go to state 138
+
+state 132
+
+    (41) constant_vec3 -> LBRACE number COMMA number COMMA . number RBRACE
+    (42) constant_vec4 -> LBRACE number COMMA number COMMA . number COMMA number RBRACE
+    (38) number -> . INT_CONST
+    (39) number -> . FLOAT_CONST
+
+    INT_CONST       shift and go to state 69
+    FLOAT_CONST     shift and go to state 70
+
+    number                         shift and go to state 139
+
+state 133
+
+    (40) constant_vec2 -> LBRACE number COMMA number RBRACE .
+
+    SEMI            reduce using rule 40 (constant_vec2 -> LBRACE number COMMA number RBRACE .)
+
+
+state 134
+
+    (43) sampler_state -> SAMPLER_STATE LBRACE TEXTURE EQ LT . ID GT SEMI RBRACE
+
+    ID              shift and go to state 140
+
+
+state 135
+
+    (25) stage -> stage_name LPAREN stage_argument . COMMA stage_argument RPAREN EQ shader_id_list SEMI
+
+    COMMA           shift and go to state 141
+
+
+state 136
+
+    (21) stage_argument -> IN . ID ID
+    (23) stage_argument -> IN . ID
+
+    ID              shift and go to state 142
+
+
+state 137
+
+    (22) stage_argument -> OUT . ID ID
+    (24) stage_argument -> OUT . ID
+
+    ID              shift and go to state 143
+
+
+state 138
+
+    (89) annotation_ui_specifier -> RANGE LPAREN number . COMMA number RPAREN
+
+    COMMA           shift and go to state 144
+
+
+state 139
+
+    (41) constant_vec3 -> LBRACE number COMMA number COMMA number . RBRACE
+    (42) constant_vec4 -> LBRACE number COMMA number COMMA number . COMMA number RBRACE
+
+    RBRACE          shift and go to state 146
+    COMMA           shift and go to state 145
+
+
+state 140
+
+    (43) sampler_state -> SAMPLER_STATE LBRACE TEXTURE EQ LT ID . GT SEMI RBRACE
+
+    GT              shift and go to state 147
+
+
+state 141
+
+    (25) stage -> stage_name LPAREN stage_argument COMMA . stage_argument RPAREN EQ shader_id_list SEMI
+    (21) stage_argument -> . IN ID ID
+    (22) stage_argument -> . OUT ID ID
+    (23) stage_argument -> . IN ID
+    (24) stage_argument -> . OUT ID
+
+    IN              shift and go to state 136
+    OUT             shift and go to state 137
+
+    stage_argument                 shift and go to state 148
+
+state 142
+
+    (21) stage_argument -> IN ID . ID
+    (23) stage_argument -> IN ID .
+
+    ID              shift and go to state 149
+    COMMA           reduce using rule 23 (stage_argument -> IN ID .)
+    RPAREN          reduce using rule 23 (stage_argument -> IN ID .)
+
+
+state 143
+
+    (22) stage_argument -> OUT ID . ID
+    (24) stage_argument -> OUT ID .
+
+    ID              shift and go to state 150
+    COMMA           reduce using rule 24 (stage_argument -> OUT ID .)
+    RPAREN          reduce using rule 24 (stage_argument -> OUT ID .)
+
+
+state 144
+
+    (89) annotation_ui_specifier -> RANGE LPAREN number COMMA . number RPAREN
+    (38) number -> . INT_CONST
+    (39) number -> . FLOAT_CONST
+
+    INT_CONST       shift and go to state 69
+    FLOAT_CONST     shift and go to state 70
+
+    number                         shift and go to state 151
+
+state 145
+
+    (42) constant_vec4 -> LBRACE number COMMA number COMMA number COMMA . number RBRACE
+    (38) number -> . INT_CONST
+    (39) number -> . FLOAT_CONST
+
+    INT_CONST       shift and go to state 69
+    FLOAT_CONST     shift and go to state 70
+
+    number                         shift and go to state 152
+
+state 146
+
+    (41) constant_vec3 -> LBRACE number COMMA number COMMA number RBRACE .
+
+    SEMI            reduce using rule 41 (constant_vec3 -> LBRACE number COMMA number COMMA number RBRACE .)
+
+
+state 147
+
+    (43) sampler_state -> SAMPLER_STATE LBRACE TEXTURE EQ LT ID GT . SEMI RBRACE
+
+    SEMI            shift and go to state 153
+
+
+state 148
+
+    (25) stage -> stage_name LPAREN stage_argument COMMA stage_argument . RPAREN EQ shader_id_list SEMI
+
+    RPAREN          shift and go to state 154
+
+
+state 149
+
+    (21) stage_argument -> IN ID ID .
+
+    COMMA           reduce using rule 21 (stage_argument -> IN ID ID .)
+    RPAREN          reduce using rule 21 (stage_argument -> IN ID ID .)
+
+
+state 150
+
+    (22) stage_argument -> OUT ID ID .
+
+    COMMA           reduce using rule 22 (stage_argument -> OUT ID ID .)
+    RPAREN          reduce using rule 22 (stage_argument -> OUT ID ID .)
+
+
+state 151
+
+    (89) annotation_ui_specifier -> RANGE LPAREN number COMMA number . RPAREN
+
+    RPAREN          shift and go to state 155
+
+
+state 152
+
+    (42) constant_vec4 -> LBRACE number COMMA number COMMA number COMMA number . RBRACE
+
+    RBRACE          shift and go to state 156
+
+
+state 153
+
+    (43) sampler_state -> SAMPLER_STATE LBRACE TEXTURE EQ LT ID GT SEMI . RBRACE
+
+    RBRACE          shift and go to state 157
+
+
+state 154
+
+    (25) stage -> stage_name LPAREN stage_argument COMMA stage_argument RPAREN . EQ shader_id_list SEMI
+
+    EQ              shift and go to state 158
+
+
+state 155
+
+    (89) annotation_ui_specifier -> RANGE LPAREN number COMMA number RPAREN .
+
+    RPAREN          reduce using rule 89 (annotation_ui_specifier -> RANGE LPAREN number COMMA number RPAREN .)
+
+
+state 156
+
+    (42) constant_vec4 -> LBRACE number COMMA number COMMA number COMMA number RBRACE .
+
+    SEMI            reduce using rule 42 (constant_vec4 -> LBRACE number COMMA number COMMA number COMMA number RBRACE .)
+
+
+state 157
+
+    (43) sampler_state -> SAMPLER_STATE LBRACE TEXTURE EQ LT ID GT SEMI RBRACE .
+
+    SEMI            reduce using rule 43 (sampler_state -> SAMPLER_STATE LBRACE TEXTURE EQ LT ID GT SEMI RBRACE .)
+
+
+state 158
+
+    (25) stage -> stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ . shader_id_list SEMI
+    (14) shader_id_list -> . ID
+    (15) shader_id_list -> . LBRACE id_list RBRACE
+
+    ID              shift and go to state 160
+    LBRACE          shift and go to state 161
+
+    shader_id_list                 shift and go to state 159
+
+state 159
+
+    (25) stage -> stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list . SEMI
+
+    SEMI            shift and go to state 162
+
+
+state 160
+
+    (14) shader_id_list -> ID .
+
+    SEMI            reduce using rule 14 (shader_id_list -> ID .)
+
+
+state 161
+
+    (15) shader_id_list -> LBRACE . id_list RBRACE
+    (12) id_list -> . ID
+    (13) id_list -> . id_list COMMA ID
+
+    ID              shift and go to state 164
+
+    id_list                        shift and go to state 163
+
+state 162
+
+    (25) stage -> stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI .
+
+    RBRACE          reduce using rule 25 (stage -> stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI .)
+    VERTEXSHADER    reduce using rule 25 (stage -> stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI .)
+    TESSCONTROLSHADER reduce using rule 25 (stage -> stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI .)
+    TESSEVALSHADER  reduce using rule 25 (stage -> stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI .)
+    GEOMETRYSHADER  reduce using rule 25 (stage -> stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI .)
+    PIXELSHADER     reduce using rule 25 (stage -> stage_name LPAREN stage_argument COMMA stage_argument RPAREN EQ shader_id_list SEMI .)
+
+
+state 163
+
+    (15) shader_id_list -> LBRACE id_list . RBRACE
+    (13) id_list -> id_list . COMMA ID
+
+    RBRACE          shift and go to state 165
+    COMMA           shift and go to state 166
+
+
+state 164
+
+    (12) id_list -> ID .
+
+    RBRACE          reduce using rule 12 (id_list -> ID .)
+    COMMA           reduce using rule 12 (id_list -> ID .)
+
+
+state 165
+
+    (15) shader_id_list -> LBRACE id_list RBRACE .
+
+    SEMI            reduce using rule 15 (shader_id_list -> LBRACE id_list RBRACE .)
+
+
+state 166
+
+    (13) id_list -> id_list COMMA . ID
+
+    ID              shift and go to state 167
+
+
+state 167
+
+    (13) id_list -> id_list COMMA ID .
+
+    RBRACE          reduce using rule 13 (id_list -> id_list COMMA ID .)
+    COMMA           reduce using rule 13 (id_list -> id_list COMMA ID .)
+

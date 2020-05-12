@@ -1,0 +1,19 @@
+
+GLSLShader Foo {
+    Foo code block
+}
+
+GLSLShader Bar {
+    Bar code block
+}
+
+technique Main {
+    pass p0 {
+        VertexShader(in APPDATA vsin, out V2P psin) = Foo;
+    }
+
+    pass p1 {
+        VertexShader(in APPDATA vsin, out V2P psin) = Bar;
+        PixelShader(in APPDATA vsin, out V2P psin) = { Foo, Bar};
+    }
+}

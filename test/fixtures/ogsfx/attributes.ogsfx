@@ -1,0 +1,7 @@
+
+attribute V2F { };
+
+attribute APPDATA {
+    vec3 position : POSITION;
+    vec3 normal : NORMAL;
+};

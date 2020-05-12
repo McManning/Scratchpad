@@ -1,0 +1,36 @@
+
+uniform mat4 gMVP : WorldViewProjection;
+
+attribute APPDATA {
+    vec3 position : POSITION;
+    vec3 normal : NORMAL;
+    vec4 channel0 : TEXCOORD0;
+};
+
+attribute V2P {
+    vec4 position : POSITION;
+    vec4 normal : NORMAL;
+};
+
+attribute PSOUT {
+    vec4 color : COLOR0;
+};
+
+GLSLShader VS {
+    void main() {
+        OUT.position = gMVP * vec4(position, 1.0);
+    }
+}
+
+GLSLShader PS {
+    void main() {
+        color = vec4(1, 0, 0, 1);
+    }
+}
+
+technique Main {
+    pass p0 {
+        VertexShader(in APPDATA, out V2P OUT) = VS;
+        PixelShader(in V2P IN, out PSOUT) = PS;
+    }
+}

@@ -1,0 +1,32 @@
+
+#ifndef _INCLUDE_OGSFH_
+#define _INCLUDE_OGSFH_
+
+#define PI 3.1415926
+
+uniform mat4 gMVP : WorldViewProjection;
+uniform vec2 gScreenSize : ViewportPixelSize;
+
+uniform Texture2D gColorTex;
+
+uniform sampler2D gSampler = sampler_state{
+    Texture = <gColorTex>;
+};
+
+attribute appData {
+    vec3 vertex : POSITION;
+};
+
+GLSLShader Common_VS {
+    void main() {
+        gl_Position = gMVP * vec4(vertex, 1.0f);
+    }
+}
+
+GLSLShader Common_Pixel_Funcs {
+    float foo(vec3 color) {
+        return 1.5;
+    }
+}
+
+#endif // _INCLUDE_OGSFH_
