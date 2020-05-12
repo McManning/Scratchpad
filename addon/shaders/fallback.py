@@ -2,8 +2,7 @@
 from .base import (
     Shader, 
     VertexData, 
-    LightData, 
-    ShaderData
+    LightData
 )
 
 # Fallback shaders if custom shader compilation fails
@@ -64,13 +63,13 @@ class FallbackShader(Shader):
     """Built-in fallback for when a user shader fails to load"""
     name = 'Default'
 
-    def load_from_settings(self, settings):
+    def update_settings(self, settings):
         # No settings used for the fallback
         pass
 
-    def get_settings(self) -> ShaderData:
-        # No settings
-        return None
+    def update_shader_properties(self, settings):
+        # no shader properties
+        pass
 
     def recompile(self):
         self.prev_mtimes = []

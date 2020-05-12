@@ -21,6 +21,9 @@ from .shaders.base import (
 
 from .shaders.fallback import FallbackShader
 from .shaders.glsl import GLSLShader
+from .shaders.ogsfx import OGSFXShader
+
+from .properties import register_dynamic_property_group
 
 class FooRenderEngine(bpy.types.RenderEngine):
     bl_idname = "foo_renderer"
@@ -56,9 +59,8 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
     def render(self, depsgraph):
         """Handle final render (F12) and material preview window renders"""
-        if not self.shader: return
-
-        # TODO: Implement
+        pass
+        # TODO: Implement. Should be the same as view_draw.
 
         # scene = depsgraph.scene
         # scale = scene.render.resolution_percentage / 100.0
@@ -174,10 +176,14 @@ class FooRenderEngine(bpy.types.RenderEngine):
         """Check if we should reload the shader sources"""
         settings = context.scene.foo
         
+        if hasattr(context.scene, 'foo_shader_properties'):
+            shader_properties = context.scene.foo_shader_properties
+            self.user_shader.update_shader_properties(shader_properties)
+            
         # Check for readable source files and changes
         try:
-            self.user_shader.load_from_settings(settings)
-            has_user_shader_changes = self.user_shader.mtimes_changed()
+            self.user_shader.update_settings(settings)
+            needs_recompile = self.user_shader.needs_recompile()
         except Exception as e:
             settings.last_shader_error = str(e)
             self.shader = self.default_shader
@@ -185,16 +191,24 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
         print('--- Force reload', settings.force_reload)
         print('--- Live reload', settings.live_reload)
-        print('--- has changes', has_user_shader_changes)
+        print('--- needs recompile', needs_recompile)
         
         # Trigger a recompile if we're forcing it or the files on disk
         # have been modified since the last render
-        if settings.force_reload or (settings.live_reload and has_user_shader_changes):
+        if settings.force_reload or (settings.live_reload and needs_recompile):
             settings.force_reload = False
             try:
                 self.user_shader.recompile()
                 settings.last_shader_error = ''
                 self.shader = self.user_shader
+                    
+                # Load a new shader properties into context
+                properties = self.user_shader.properties
+                register_dynamic_property_group(
+                    'foo_shader_properties', 
+                    properties.definitions
+                )
+                
             except Exception as e:
                 print('COMPILE ERROR', type(e))
                 print(e)
@@ -221,6 +235,9 @@ class FooRenderEngine(bpy.types.RenderEngine):
         
         self.bind_display_space_shader(scene)
         self.shader.bind()
+
+        # TODO: Move this.
+        self.shader.set_int("_Frame", scene.frame_current)
         
         self.shader.set_camera_matrices(
             region3d.view_matrix,
@@ -245,7 +262,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
         self.shader.unbind()
         self.unbind_display_space_shader()
 
-        glDisable(GL_BLEND)
+        # glDisable(GL_BLEND)
 
     def refresh_all_buffers(self):
         """Force *all* GPU buffers to reload.

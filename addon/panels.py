@@ -93,6 +93,28 @@ class FOO_RENDER_PT_settings_sources(BasePanel):
             for line in lines:
                 col.label(text=line)
 
+class FOO_RENDER_PT_settings_shader_properties(BasePanel):
+    bl_label = 'Shader Properties'
+    bl_parent_id = 'FOO_RENDER_PT_settings'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        
+        settings = context.scene.foo
+        
+        col = layout.column()
+        
+        if not settings.last_shader_error and hasattr(context.scene, 'foo_shader_properties'):
+            props = context.scene.foo_shader_properties
+
+            # TODO: Less... magic
+            for name in props.__annotations__.keys():
+                col.prop(props, name)
+        else:
+            col.label(text='No additional properties for the current shader')
+
 class FOO_LIGHT_PT_light(BasePanel):
     """Custom per-light settings editor for this render engine"""
     bl_label = 'Light'
@@ -214,6 +236,7 @@ classes = (
     FOO_RENDER_PT_settings,
     FOO_RENDER_PT_settings_viewport,
     FOO_RENDER_PT_settings_sources,
+    FOO_RENDER_PT_settings_shader_properties,
 
     # Light panels
     FOO_LIGHT_PT_light,
@@ -222,11 +245,3 @@ classes = (
     FOO_PT_context_material,
     FOO_MATERIAL_PT_settings
 )
-
-# def register():
-#     for cls in classes:
-#         bpy.utils.register_class(cls)
-
-# def unregister():
-#     for cls in classes:
-#         bpy.utils.unregister_class(cls)

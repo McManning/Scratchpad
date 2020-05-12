@@ -1,5 +1,6 @@
 
 import os
+import json
 import numpy as np
 from bgl import *
 
@@ -9,10 +10,47 @@ class CompileError(Exception):
 class LinkError(Exception):
     pass
 
-class ShaderData:
-    def add_setting(name: str, default):
-        pass
-        
+class ShaderProperties:
+    """ Collection of user-editable properties that can be changed 
+        on a per-shader instance basis. For example, editable uniforms
+        within an OGSFX file
+    """
+    def __init__(self):
+        self.clear()
+
+    # def serialize(self) -> str:
+    #     return json.dumps(self.props)
+
+    # def deserialize(self, value: str):
+    #     self.props = json.load(value)
+    
+    def add(
+        self, 
+        name: str, 
+        description: str, 
+        prop_type: str, 
+        default_value = None, 
+        # TODO: Min/max should be float min and float max
+        min_value: float = -99999, 
+        max_value: float = 99999
+    ):
+        self.definitions.append(
+            (name, description, prop_type, default_value, min_value, max_value)
+        )
+        self.values[name] = default_value
+    
+    def clear(self):
+        self.definitions = []
+        self.values = {}
+
+    def from_property_group(self, settings):
+        """Load current values from a PropertyGroup"""
+        for name in self.values.keys():
+            self.values[name] = getattr(settings, name)
+
+        # TODO: Does this also perform UPLOAD for the shader?
+        # I would assume so, right? 
+
 class LightData:
     """Light data to upload to the GPU"""
     def __init__(self):
@@ -49,6 +87,9 @@ class VertexData:
     # glDeleteBuffers(1, VBO)
     # glDeleteBuffers(1, EBO)
 
+    # TODO: Might want a "load from mesh" or something call here.
+    # So the Mesh class isn't responsible for inserting that data here.
+
     def upload_standard_format(self, shader):
         # Bind the VAO so we can upload new buffers
         glBindVertexArray(self.VAO)
@@ -78,8 +119,8 @@ class VertexData:
         self.indices_size = len(self.indices)
         
 
-def compile_glsl(src: str, type_flag):
-    shader = glCreateShader(type_flag)
+def compile_glsl(src: str, stage_flag: int) -> int:
+    shader = glCreateShader(stage_flag)
     glShaderSource(shader, src)
     glCompileShader(shader)
 
@@ -96,16 +137,20 @@ def compile_glsl(src: str, type_flag):
     infoLog = Buffer(GL_BYTE, [bufferSize])
     glGetShaderInfoLog(shader, bufferSize, length, infoLog)
 
-    if type_flag == GL_VERTEX_SHADER:
-        stype = 'Vertex'
-    elif type_flag == GL_FRAGMENT_SHADER:
-        stype = 'Fragment'
-    elif type_flag == GL_GEOMETRY_SHADER:
-        stype = 'Geometry'
+    if stage_flag == GL_VERTEX_SHADER:
+        stage = 'Vertex'
+    elif stage_flag == GL_FRAGMENT_SHADER:
+        stage = 'Fragment'
+    elif stage_flag == GL_TESS_CONTROL_SHADER:
+        stage = 'Tessellation Control'
+    elif stage_flag == GL_TESS_EVALUATION_SHADER:
+        stage = 'Tessellation Evaluation'
+    elif stage_flag == GL_GEOMETRY_SHADER:
+        stage = 'Geometry'
     
     # Reconstruct byte data into a string
     err = ''.join(chr(infoLog[i]) for i in range(length[0]))
-    raise CompileError(stype + ' Shader Error:\n' + err)
+    raise CompileError(stage + ' Shader Error:\n' + err)
 
 
 class Shader:
@@ -210,6 +255,11 @@ class Shader:
 
         glUniform1i(location, value)
 
+    def set_float(self, uniform: str, value: float):
+        location = glGetUniformLocation(self.program, uniform)
+        if location < 0: return
+        glUniform1f(location, value)
+
     def set_vec3(self, uniform: str, value):
         location = glGetUniformLocation(self.program, uniform)
         if location < 0: return
@@ -230,10 +280,17 @@ class Shader:
 
     # Core methods to be implemented by different shader formats
 
-    def load_from_settings(self, settings):
+    def update_settings(self, settings):
+        """Read settings universal to the renderer
+        
+        :param settings: FooRendererSettings instance (I think?)
+        """
         raise Exception('Must be implemented by a concrete class')
 
-    def get_settings(self) -> ShaderData:
+    def update_shader_properties(self, settings):
+        """Update local ShaderProperties from the provided PropertyGroup
+        
+        :param settings: PropertyGroup to read"""
         raise Exception('Must be implemented by a concrete class')
 
     def recompile(self):
