@@ -1,5 +1,4 @@
 
-#version 330 core
 layout (location = 0) out vec4 FragColor;
 
 uniform mat4 ModelMatrix; // World
@@ -18,6 +17,10 @@ uniform vec4[16] _AdditionalLightsPosition; // (Light.matrix_world.to_translatio
 uniform vec4[16] _AdditionalLightsColor; // (Light.color, intensity)
 uniform vec4[16] _AdditionalLightsSpotDir; // (Light.matrix_world.to_quaternion() @ Vector((0, 1, 0)), 0)
 uniform vec4[16] _AdditionalLightsAttenuation; // (magic, 2.8, 0, 1)
+
+// instruct the compiler to reset line counts and source string # here.
+// e.g. an error on the line following this would be at "1(4)"
+#line 4 1
 
 struct Light {
     vec3 position;
