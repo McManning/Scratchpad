@@ -52,3 +52,16 @@ def unregister():
             for cls in reversed(mod.classes):
                 if cls.is_registered:
                     unregister_class(cls)
+
+    # Unregister dynamic-generated property groups 
+    if hasattr(bpy, 'foo_dynamic_property_groups'):
+        for key, value in bpy.foo_dynamic_property_groups.items():
+            # TODO: Scope. Currently assumes they all exist on Scene.
+            # TODO: SHOULD we delattr? Reloading the plugin should just
+            # replace, not destroy what was there. What about a scene reload?
+            # Does that break everything stored here? 
+            # Each PropertyGroup *does* delete the property on unregister currently.
+            delattr(bpy.types.Scene, key) 
+            bpy.utils.unregister_class(value)
+    
+    bpy.foo_dynamic_property_groups = {}

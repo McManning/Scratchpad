@@ -12,20 +12,6 @@ class FooReloadSourcesOperator(bpy.types.Operator):
         
         return {'FINISHED'}
 
-# CLASSLIST = (
-#     FooReloadSourcesOperator
-# )
-
-# def register():
-#     bpy.utils.register_class(FooReloadSourcesOperator)
-#     # for cls in CLASSLIST:
-#     #     bpy.utils.register_class(cls)
-
-# def unregister():
-#     bpy.utils.unregister_class(FooReloadSourcesOperator)
-#     # for cls in CLASSLIST:
-#     #     bpy.utils.unregister_class(cls)
-
 classes = (
     FooReloadSourcesOperator,
 )

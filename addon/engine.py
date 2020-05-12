@@ -175,6 +175,13 @@ class FooRenderEngine(bpy.types.RenderEngine):
     def check_shaders(self, context):
         """Check if we should reload the shader sources"""
         settings = context.scene.foo
+
+        # TODO: Generic version that handles different plugin loaders
+        # If the selected shader loader changes, instantiate a new shader
+        if settings.loader == 'glsl' and not isinstance(self.user_shader, GLSLShader):
+            self.user_shader = GLSLShader()
+        elif settings.loader == 'ogsfx' and not isinstance(self.user_shader, OGSFXShader):
+            self.user_shader = OGSFXShader()
         
         if hasattr(context.scene, 'foo_shader_properties'):
             shader_properties = context.scene.foo_shader_properties
