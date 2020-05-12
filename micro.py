@@ -102,7 +102,7 @@ class CompileError(Exception):
 class LinkError(Exception):
     pass
 
-def compile_shader(src: str, type_flag):
+def compile_glsl(src: str, stage_flag: int) -> int:
     shader = glCreateShader(type_flag)
     glShaderSource(shader, src)
     glCompileShader(shader)
@@ -120,16 +120,20 @@ def compile_shader(src: str, type_flag):
     infoLog = Buffer(GL_BYTE, [bufferSize])
     glGetShaderInfoLog(shader, bufferSize, length, infoLog)
 
-    if type_flag == GL_VERTEX_SHADER:
-        stype = 'Vertex'
-    elif type_flag == GL_FRAGMENT_SHADER:
-        stype = 'Fragment'
-    elif type_flag == GL_GEOMETRY_SHADER:
-        stype = 'Geometry'
+    if stage_flag == GL_VERTEX_SHADER:
+        stage = 'Vertex'
+    elif stage_flag == GL_FRAGMENT_SHADER:
+        stage = 'Fragment'
+    elif stage_flag == GL_TESS_CONTROL_SHADER:
+        stage = 'Tessellation Control'
+    elif stage_flag == GL_TESS_EVALUATION_SHADER:
+        stage = 'Tessellation Evaluation'
+    elif stage_flag == GL_GEOMETRY_SHADER:
+        stage = 'Geometry'
     
     # Reconstruct byte data into a string
     err = ''.join(chr(infoLog[i]) for i in range(length[0]))
-    raise CompileError(stype + ' Shader Error:\n' + err)
+    raise CompileError(stage + ' Shader Error:\n' + err)
 
 class Shader:
     """Encapsulate shader compilation and configuration"""
@@ -145,7 +149,7 @@ class Shader:
 
     def compile_from_fallback(self):
         self.prev_mtimes = []
-        self.compile_from_strings(VS_FALLBACK, FS_FALLBACK, GS_FALLBACK)
+        self.compile_from_strings(VS_FALLBACK, FS_FALLBACK)
 
     def mtimes(self):
         """Aggregate file modication times from sources"""
@@ -181,27 +185,31 @@ class Shader:
             with open(self.geom) as f:
                 gs = f.read()
                 
-        self.compile_from_strings(vs, fs, gs)
+        self.compile_from_strings(vs, fs, tcs, tes, gs)
         self.prev_mtimes = self.mtimes()
 
-    def compile_from_strings(self, vs: str, fs: str, gs: str = None):
-        vertShader = compile_shader(vs, GL_VERTEX_SHADER)
-        fragShader = compile_shader(fs, GL_FRAGMENT_SHADER)
-        
-        geomShader = None
-        if gs: geomShader = compile_shader(gs, GL_GEOMETRY_SHADER)
+    def compile_from_strings(self, vs: str, fs: str, tcs: str = None, tes: str = None, gs: str = None):
+        vs_compiled = compile_glsl(vs, GL_VERTEX_SHADER)
+        fs_compiled = compile_glsl(fs, GL_FRAGMENT_SHADER)
+        tcs_compiled = compile_glsl(gs, GL_TESS_CONTROL_SHADER) if tcs else None
+        tes_compiled = compile_glsl(gs, GL_TESS_EVALUATION_SHADER) if tes else None
+        gs_compiled = compile_glsl(gs, GL_GEOMETRY_SHADER) if gs else None
 
         program = glCreateProgram()
-        glAttachShader(program, vertShader)
-        glAttachShader(program, fragShader)
-        if gs: glAttachShader(program, geomShader)
+        glAttachShader(program, vs_compiled)
+        glAttachShader(program, fs_compiled)
+        if tcs: glAttachShader(program, tcs_compiled)
+        if tes: glAttachShader(program, tes_compiled)
+        if gs: glAttachShader(program, gs_compiled)
             
         glLinkProgram(program)
 
         # Cleanup shaders
-        glDeleteShader(vertShader)
-        glDeleteShader(fragShader)
-        if gs: glDeleteShader(geomShader)
+        glDeleteShader(vs_compiled)
+        glDeleteShader(fs_compiled)
+        if tcs: glDeleteShader(tcs_compiled)
+        if tes: glDeleteShader(tes_compiled)
+        if gs: glDeleteShader(gs_compiled)
 
         #Check for link errors
         link_ok = Buffer(GL_INT, 1)
