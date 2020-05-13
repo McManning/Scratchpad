@@ -16,22 +16,22 @@ class TestOGSFXPreprocessor(unittest.TestCase):
         p = OGSFXPreprocessor()
         p.define('DEBUG 1')
 
-        result = p.parse_file(FIXTURES + '/test-preprocessors.ogsfx')
+        result = p.parse_file(FIXTURES + '/preprocessors.ogsfx')
         self.assertRegex(result, r'yes')
         self.assertNotRegex(result, r'no')
 
     def test_includes_other_files(self):
         p = OGSFXPreprocessor()
-        result = p.parse_file(FIXTURES + '/test-includes.ogsfx')
+        result = p.parse_file(FIXTURES + '/includes.ogsfx')
         
-        with open(FIXTURES + '/test-includes.expected.ogsfx') as f:
+        with open(FIXTURES + '/includes.expected.ogsfx') as f:
             expected = f.read()
 
         self.assertEqual(expected, result)
 
         # Ensure the includes are all indexed in order
         self.assertEqual(3, len(p.includes))
-        self.assertRegex(p.includes[0], r'test-includes\.ogsfx$')
+        self.assertRegex(p.includes[0], r'includes\.ogsfx$')
         self.assertRegex(p.includes[1], r'include\.ogsfh$')
         self.assertRegex(p.includes[2], r'include\.glslv$')
 

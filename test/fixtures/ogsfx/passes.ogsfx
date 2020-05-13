@@ -1,0 +1,31 @@
+
+attribute APPDATA {
+    vec3 position : POSITION;
+};
+
+attribute V2P {
+    vec4 position : POSITION;
+};
+
+attribute PSOUT {
+    vec4 color : COLOR0;
+};
+
+GLSLShader Foo {
+    Foo code block
+}
+
+GLSLShader Bar {
+    Bar code block
+}
+
+technique Main {
+    pass p0 {
+        VertexShader(in APPDATA vsin, out V2P vsout) = Foo;
+    }
+
+    pass p1 {
+        VertexShader(in APPDATA vsin, out V2P vsout) = Bar;
+        PixelShader(in V2P psin, out PSOUT) = { Foo, Bar};
+    }
+}

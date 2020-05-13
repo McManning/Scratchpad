@@ -402,6 +402,7 @@ class OGSFXShader:
                     setting.order= int(a.value)
                 elif a.name == 'UIWidget':
                     # TODO: Widget customization
+                    pass
                 elif a.name == 'UIFieldNames':
                     setting.input_type = ShaderConfigSetting.DROPDOWN
                     setting.set_options(str(a.value))

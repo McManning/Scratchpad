@@ -2,7 +2,7 @@
 
 Built-in global variables for GLSL shaders
 
-## Inputs
+## Vertex Inputs
 
 ||Name|Description
 |---|---|---
