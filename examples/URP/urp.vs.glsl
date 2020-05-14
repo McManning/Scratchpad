@@ -1,11 +1,5 @@
 
-uniform mat4 ModelMatrix;
-uniform mat4 ViewMatrix;
-uniform mat4 ModelViewMatrix;
-uniform mat4 ProjectionMatrix;
-uniform mat4 ModelViewProjectionMatrix;
-uniform mat4 CameraMatrix; // ViewInverse
-// uniform mat4 NormalMatrix; // WorldInverseTranspose
+#include "common.glsl"
 
 in vec3 Position;
 in vec3 Normal;
