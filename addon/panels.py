@@ -46,9 +46,9 @@ class FOO_RENDER_PT_settings_viewport(BasePanel):
         col.prop(settings, 'clear_color')
         col.prop(settings, 'ambient_color')
 
-class FOO_RENDER_PT_settings_sources(BasePanel):
-    """Shader source file references and reload settings"""
-    bl_label = 'Source Files'
+class FOO_RENDER_PT_settings_shader(BasePanel):
+    """Shader configurations and reload settings"""
+    bl_label = 'Shader'
     bl_parent_id = 'FOO_RENDER_PT_settings'
 
     def draw(self, context):
@@ -83,8 +83,7 @@ class FOO_RENDER_PT_settings_sources(BasePanel):
         # col.alignment = 'RIGHT'
         # col.label(text="Last reloaded N minutes ago")
         
-        # Alert message on compile error
-        
+        # Alert message and trace on compile errors
         col = layout.column(align=True)
         col.alert = True
 
@@ -93,29 +92,6 @@ class FOO_RENDER_PT_settings_sources(BasePanel):
             lines = settings.last_shader_error.split('\n')
             for line in lines:
                 col.label(text=line)
-
-class FOO_RENDER_PT_settings_shader_properties(BasePanel):
-    """Dynamic per-shader properties added to the render tab"""
-    bl_label = 'Shader Properties'
-    bl_parent_id = 'FOO_RENDER_PT_settings'
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-        
-        settings = context.scene.foo
-        
-        col = layout.column()
-        
-        if not settings.last_shader_error and hasattr(context.scene, 'foo_dynamic'):
-            props = context.scene.foo_dynamic
-
-            # TODO: Less... magic
-            for name in props.__annotations__.keys():
-                col.prop(props, name)
-        else:
-            col.label(text='No additional properties for the current shader')
 
 class FOO_LIGHT_PT_light(BasePanel):
     """Custom per-light settings editor for this render engine"""
@@ -260,8 +236,7 @@ classes = (
     # Renderer panels
     FOO_RENDER_PT_settings,
     FOO_RENDER_PT_settings_viewport,
-    FOO_RENDER_PT_settings_sources,
-    FOO_RENDER_PT_settings_shader_properties,
+    FOO_RENDER_PT_settings_shader,
 
     # Light panels
     FOO_LIGHT_PT_light,
