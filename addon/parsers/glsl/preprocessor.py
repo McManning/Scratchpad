@@ -1,6 +1,6 @@
 import os 
 import io
-from pcpp import Preprocessor, OutputDirective, Action
+from ..pcpp import Preprocessor, OutputDirective, Action
 
 class GLSLPreprocessor(Preprocessor):
     """Preprocessor directive handling for .glsl files"""

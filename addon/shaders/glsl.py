@@ -25,10 +25,10 @@ class GLSLShader(Shader):
 
         self.properties = ShaderProperties()
         self.properties.add('source_file', 'vert_filename', 'Vertex', 'GLSL Vertex shader source file')
-        self.properties.add('source_file', 'frag_filename', 'Fragment', 'GLSL Fragment shader source file')
         self.properties.add('source_file', 'tesc_filename', 'Tessellation Control', 'GLSL Tessellation Control shader source file')
         self.properties.add('source_file', 'tese_filename', 'Tessellation Evaluation', 'GLSL Tessellation Evaluation shader source file')
         self.properties.add('source_file', 'geom_filename', 'Geometry', 'GLSL Geometry shader source file')
+        self.properties.add('source_file', 'frag_filename', 'Fragment', 'GLSL Fragment shader source file')
 
         self.material_properties = ShaderProperties()
 
@@ -46,10 +46,10 @@ class GLSLShader(Shader):
         
         self.stages = { 
             'vs': settings.vert_filename,
-            'fs': settings.frag_filename,
             'tcs': settings.tesc_filename, 
             'tes': settings.tese_filename,
-            'gs': settings.geom_filename
+            'gs': settings.geom_filename,
+            'fs': settings.frag_filename
         }
         
         self.monitored_files = [f for f in self.stages.values() if f]
@@ -75,7 +75,10 @@ class GLSLShader(Shader):
             source = None
             if filename:
                 # TODO: Stage defines (e.g. #define VERTEX - useful?)
-                source = preprocessor.parse_file(filename)
+                source = '#version {}\n{}'.format(
+                    self.COMPAT_VERSION, 
+                    preprocessor.parse_file(filename)
+                )
                 self.includes[stage] = preprocessor.includes
 
             sources[stage] = source
@@ -115,7 +118,7 @@ class GLSLShader(Shader):
     def set_lights(self, data: LightData):
         """Copy lighting information into shader uniforms
         
-        This is inspired by Unity's LWRP where there is a main directional light
+        This is inspired by Unity's URP where there is a main directional light
         and a number of secondary lights packed into an array buffer. 
 
         This particular implementation doesn't account for anything advanced

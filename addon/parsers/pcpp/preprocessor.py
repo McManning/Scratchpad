@@ -156,12 +156,16 @@ import time
 import os.path
 
 # Python 2/3 compatible way of importing a subpackage
-oldsyspath = sys.path
-sys.path = [ os.path.join( os.path.dirname( os.path.abspath(__file__) ), "ply" ) ] + sys.path
-from ply import lex
-from ply.lex import LexToken
-sys.path = oldsyspath
-del oldsyspath
+# oldsyspath = sys.path
+# sys.path = [ os.path.join( os.path.dirname( os.path.abspath(__file__) ), "ply" ) ] + sys.path
+# from ply import lex
+# from ply.lex import LexToken
+# sys.path = oldsyspath
+# del oldsyspath
+
+# Adjacent package imports
+from ..ply import lex 
+from ..ply.lex import LexToken
 
 # -----------------------------------------------------------------------------
 # trigraph()
