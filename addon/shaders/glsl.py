@@ -4,6 +4,7 @@ from time import time
 
 from .base import (
     Shader, 
+    ShaderProperties,
     VertexData, 
     LightData
 )
@@ -12,7 +13,6 @@ from ..parsers.glsl.preprocessor import GLSLPreprocessor
 
 class GLSLShader(Shader):
     """Direct GLSL shader from GLSL source files"""
-    name = 'GLSL'
 
     # Version directive to automatically add to source files
     COMPAT_VERSION = '330 core'
@@ -20,7 +20,24 @@ class GLSLShader(Shader):
     # Maximum lights to send to shaders as _AdditionalLights* uniforms
     MAX_ADDITIONAL_LIGHTS = 16
 
-    def update_settings(self, settings):
+    def __init__(self):
+        super(GLSLShader, self).__init__()
+
+        self.properties = ShaderProperties()
+        self.properties.add('source_file', 'vert_filename', 'Vertex', 'GLSL Vertex shader source file')
+        self.properties.add('source_file', 'frag_filename', 'Fragment', 'GLSL Fragment shader source file')
+        self.properties.add('source_file', 'tesc_filename', 'Tessellation Control', 'GLSL Tessellation Control shader source file')
+        self.properties.add('source_file', 'tese_filename', 'Tessellation Evaluation', 'GLSL Tessellation Evaluation shader source file')
+        self.properties.add('source_file', 'geom_filename', 'Geometry', 'GLSL Geometry shader source file')
+
+        self.material_properties = ShaderProperties()
+
+    def get_renderer_properties(self):
+        return self.properties
+
+    def update_renderer_properties(self, settings):
+        self.properties.from_property_group(settings)
+        
         if not os.path.isfile(settings.vert_filename):
             raise FileNotFoundError('Missing required vertex shader')
             
@@ -36,11 +53,13 @@ class GLSLShader(Shader):
         }
         
         self.monitored_files = [f for f in self.stages.values() if f]
-        # We keep prev_mtimes - in case this was called with the same files
 
-    def update_shader_properties(self, settings):
-        self.properties.from_property_group(settings)
+    def get_material_properties(self):
+        return self.material_properties
 
+    def update_material_properties(self, settings):
+        self.material_properties.from_property_group(settings)
+        
     def recompile(self):
         sources = {}
 
@@ -69,8 +88,6 @@ class GLSLShader(Shader):
             sources['gs']
         )
 
-        # GLSL shaders have no additional properties
-        self.properties.clear()
         self.update_mtimes()
 
     def bind(self):

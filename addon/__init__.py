@@ -61,7 +61,7 @@ def unregister():
             # replace, not destroy what was there. What about a scene reload?
             # Does that break everything stored here? 
             # Each PropertyGroup *does* delete the property on unregister currently.
-            delattr(bpy.types.Scene, key) 
+            # delattr(bpy.types.Material, key) 
             bpy.utils.unregister_class(value)
     
     bpy.foo_dynamic_property_groups = {}

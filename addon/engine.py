@@ -20,10 +20,14 @@ from .shaders.base import (
 )
 
 from .shaders.fallback import FallbackShader
-from .shaders.glsl import GLSLShader
-from .shaders.ogsfx import OGSFXShader
+from .shaders import shaders
 
-from .properties import register_dynamic_property_group
+from .properties import (
+    register_dynamic_property_group, 
+    unregister_dynamic_property_group,
+    BaseDynamicMaterialSettings, 
+    BaseDynamicRendererSettings
+)
 
 class FooRenderEngine(bpy.types.RenderEngine):
     bl_idname = "foo_renderer"
@@ -40,7 +44,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
         self.lights.main_light = MainLight()
 
         self.default_shader = FallbackShader()
-        self.user_shader = GLSLShader()
+        self.user_shader = None
 
         # Set the initial shader to the default until we load a user shader
         self.shader = self.default_shader
@@ -86,7 +90,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
     def view_update(self, context, depsgraph):
         """Called when a scene or 3D viewport changes"""
-        self.check_shaders(context)
+        self.update_shaders(context)
 
         region = context.region
         view3d = context.space_data
@@ -123,14 +127,12 @@ class FooRenderEngine(bpy.types.RenderEngine):
         if obj.name not in self.meshes:
             mesh = Mesh()
             rebuild_geometry = True
-            # print('Add mesh', mesh)
         else:
             mesh = self.meshes[obj.name]
-            # print('Update mesh', mesh)
 
         mesh.update(obj)
 
-        # Copy updated vertex data to the GPU, IFF changed
+        # Copy updated vertex data to the GPU, if modified since last render
         if rebuild_geometry:
             mesh.rebuild(obj.evaluated_get(depsgraph), self.shader)
         
@@ -145,18 +147,16 @@ class FooRenderEngine(bpy.types.RenderEngine):
             self.update_point_light(obj)
         elif light_type == 'SPOT':
             self.update_spot_light(obj)
-        # AREA not supported
-
+        # TODO: AREA
+        
     def update_main_light(self, obj):
         self.lights.main_light.update(obj)
 
     def update_point_light(self, obj):
         if obj.name not in self.lights.additional_lights:
             light = PointLight()
-            print('Add point light', light)
         else:
             light = self.lights.additional_lights[obj.name]
-            print('Update point light', light)
         
         light.update(obj)
         self.updated_additional_lights[obj.name] = light
@@ -164,32 +164,42 @@ class FooRenderEngine(bpy.types.RenderEngine):
     def update_spot_light(self, obj):
         if obj.name not in self.lights.additional_lights:
             light = SpotLight()
-            print('Add spot light', light)
         else:
             light = self.lights.additional_lights[obj.name]
-            print('Update spot light', light)
         
         light.update(obj)
         self.updated_additional_lights[obj.name] = light
     
-    def check_shaders(self, context):
-        """Check if we should reload the shader sources"""
+    def update_shaders(self, context):
+        """Send updated user data to shaders and check if we should hot reload sources"""
         settings = context.scene.foo
 
-        # TODO: Generic version that handles different plugin loaders
-        # If the selected shader loader changes, instantiate a new shader
-        if settings.loader == 'glsl' and not isinstance(self.user_shader, GLSLShader):
-            self.user_shader = GLSLShader()
-        elif settings.loader == 'ogsfx' and not isinstance(self.user_shader, OGSFXShader):
-            self.user_shader = OGSFXShader()
-        
-        if hasattr(context.scene, 'foo_shader_properties'):
-            shader_properties = context.scene.foo_shader_properties
-            self.user_shader.update_shader_properties(shader_properties)
-            
+        # Check if the selected shader has changed from what's  
+        # currently loaded and if so, instantiate a new one
+        for shader in shaders:
+            name = shader[0]
+            shader_impl = shader[1]
+            if settings.loader == name and not isinstance(self.user_shader, shader_impl):
+                self.user_shader = shader_impl()
+                settings.last_shader_error = ''
+
+                # On shader change, update the dynamic renderer properties to match
+                unregister_dynamic_property_group('foo_renderer_dynamic')
+                props = self.user_shader.get_renderer_properties()
+                if props:
+                    register_dynamic_property_group(
+                        'foo_renderer_dynamic', 
+                        BaseDynamicRendererSettings,
+                        props.definitions
+                    )
+
         # Check for readable source files and changes
         try:
-            self.user_shader.update_settings(settings)
+            # Push current dynamic properties from the UI to the shader
+            if hasattr(context.scene, 'foo_dynamic'):
+                props = context.scene.foo_dynamic
+                self.user_shader.update_renderer_properties(props)
+                
             needs_recompile = self.user_shader.needs_recompile()
         except Exception as e:
             settings.last_shader_error = str(e)
@@ -208,13 +218,16 @@ class FooRenderEngine(bpy.types.RenderEngine):
                 self.user_shader.recompile()
                 settings.last_shader_error = ''
                 self.shader = self.user_shader
-                    
-                # Load a new shader properties into context
-                properties = self.user_shader.properties
-                register_dynamic_property_group(
-                    'foo_shader_properties', 
-                    properties.definitions
-                )
+                
+                # Load new dynamic material properties into context
+                unregister_dynamic_property_group('foo_material_dynamic')
+                props = self.user_shader.get_material_properties()
+                if props:
+                    register_dynamic_property_group(
+                        'foo_material_dynamic', 
+                        BaseDynamicMaterialSettings,
+                        props.definitions
+                    )
                 
             except Exception as e:
                 print('COMPILE ERROR', type(e))

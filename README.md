@@ -15,6 +15,7 @@ This project contains a full render engine implementation and a single .py micro
 * Support for #include directives
 * Hot reloading of shader source files when changed on disk
 * (Some) support for Maya's OGSFX shader format
+* Dynamic property editors from shader annotations
 
 ## Limitations
 

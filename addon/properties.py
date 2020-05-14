@@ -13,73 +13,22 @@ from bpy.props import (
 
 from bpy.types import PropertyGroup
 
+from .shaders import shaders
+
 def force_shader_reload(self, context):
     """Callback when any of the shader filenames change in FooRenderSettings"""
     context.scene.foo.force_reload = True
 
-LOADERS = [
-    # Identifier, name, description, icon, number
-    ('glsl', 'GLSL', 'Shader loaded from simple GLSL files without extra features', '', 0),
-    ('ogsfx', 'Maya OGSFX', 'Shader using OGSFX format to declare custom UI editors, techniques, and passes', '', 1),
-]
+# Generate a Blender enum list for available shader loaders
+LOADERS = [(s[0], s[0], s[1].__doc__, '', i) for i, s in enumerate(shaders)]
 
 class FooRendererSettings(PropertyGroup):
     loader: EnumProperty(
         name='Shader Format',
         items=LOADERS,
         description='Shader file format to load from',
-        default='glsl',
+        default=LOADERS[0][0]
         # update = do thing
-    )
-
-    # Renderer settings specific to OGSFXShader
-    ogsfx_filename: StringProperty(
-        name='Filename',
-        description='.ogsfx file to load',
-        default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
-    )
-
-    # Renderer settings specific to GLSLShader
-    vert_filename: StringProperty(
-        name='Vertex',
-        description='GLSL vertex shader source file',
-        default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
-    )
-    
-    frag_filename: StringProperty(
-        name='Fragment',
-        description='GLSL fragment shader source file',
-        default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
-    )
-    
-    tesc_filename: StringProperty(
-        name='Tessellation Control',
-        description='GLSL tessellation control shader source file',
-        default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
-    )
-    
-    tese_filename: StringProperty(
-        name='Tessellation Evaluation',
-        description='GLSL tessellation evaluation shader source file',
-        default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
-    )
-    
-    geom_filename: StringProperty(
-        name='Geometry',
-        description='GLSL geometry shader source file',
-        default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
     )
     
     # Common properties
@@ -130,8 +79,8 @@ class FooLightSettings(PropertyGroup):
         name='Color',
         subtype='COLOR',
         default=(0.15, 0.15, 0.15),
-        min=0.0, max=1.0,
-        description='color picker'
+        min=0.0, 
+        max=1.0
     )
     
     distance: FloatProperty(
@@ -160,72 +109,108 @@ class FooLightSettings(PropertyGroup):
     def unregister(cls):
         del bpy.types.Light.foo
 
-def register_dynamic_property_group(name: str, properties: list):
+class BaseDynamicRendererSettings(PropertyGroup):
+    @classmethod
+    def register(cls):
+        print('Called register for ', cls)
+        bpy.types.Scene.foo_dynamic = PointerProperty(
+            name='Foo Dynamic Renderer Settings',
+            description='',
+            type=cls
+        )
+    
+    @classmethod
+    def unregister(cls):
+        del bpy.types.Scene.foo_dynamic
+
+class BaseDynamicMaterialSettings(PropertyGroup):
+    @classmethod
+    def register(cls):
+        print('Called register for ', cls)
+        bpy.types.Material.foo_dynamic = PointerProperty(
+            name='Foo Dynamic Material Settings',
+            description='',
+            type=cls
+        )
+    
+    @classmethod
+    def unregister(cls):
+        del bpy.types.Material.foo_dynamic
+
+def register_dynamic_property_group(name: str, base: PropertyGroup, properties: list):
     """Create a named PropertyGroup from a configuration list at runtime
 
-    :param properties: List in the shape [(name, description, type, default_value, min*, max*)]
+    Parameters:
+        name (str):             Class name to use
+        base (PropertyGroup):   Base property group class to inherit the new class
+        properties (list):      List in the shape [(key, title, description, type, default_value, min*, max*)]
     """
     # Map a key to a *Property() class instance
-    attributes = {}
+    attr = {}
+
+    print('Register dynamic', name, base, properties)
 
     for prop in properties:
-        prop_name = prop[0]
-        description = prop[1]
-        prop_type = prop[2]
-        default_value = prop[3] # mixed type
-        prop_min = prop[4] if len(prop) > 4 else -99999 # TODO: float min
-        prop_max = prop[5] if len(prop) > 5 else 99999 # TODO: Float max
+        field_type, key, title, description, default_value, min_value, max_value = prop
 
-        if prop_type == 'float':
-            attributes[prop_name] = FloatProperty(
-                name=prop_name,
+        if field_type == 'float':
+            attr[key] = FloatProperty(
+                name=title,
                 description=description,
-                default=default_value,
-                min=prop_min,
-                max=prop_max
+                default=default_value or 0,
+                min=min_value,
+                max=max_value
             )
-        elif prop_type == 'color':
-            attributes[prop_name] = FloatVectorProperty(  
-                name=prop_name,
+        elif field_type == 'color':
+            attr[key] = FloatVectorProperty(  
+                name=title,
                 description=description,
                 subtype='COLOR',
-                default=default_value, # (0.15, 0.15, 0.15)
+                default=default_value or (1, 1, 1),
                 min=0.0, max=1.0,
             )
-        elif prop_type == 'boolean':
-            attributes[prop_name] = BoolProperty(
-                name=prop_name,
+        elif field_type == 'boolean':
+            attr[key] = BoolProperty(
+                name=title,
                 description=description,
                 default=default_value
             )
-        elif prop_type == 'vec2':
-            attributes[prop_name] = FloatVectorProperty(
+        elif field_type == 'vec2':
+            attr[key] = FloatVectorProperty(
                 size=2,
-                name=prop_name,
+                name=title,
                 description=description,
-                default=default_value,
-                min=prop_min,
-                max=prop_max
+                default=default_value or (0, 0),
+                min=min_value,
+                max=max_value
             )
-        elif prop_type == 'vec3':
-            attributes[prop_name] = FloatVectorProperty(
+        elif field_type == 'vec3':
+            attr[key] = FloatVectorProperty(
                 size=3,
-                name=prop_name,
+                name=title,
                 description=description,
-                default=default_value,
-                min=prop_min,
-                max=prop_max
+                default=default_value or (0, 0, 0),
+                min=min_value,
+                max=max_value
             )
-        elif prop_type == 'vec4':
-            attributes[prop_name] = FloatVectorProperty(
+        elif field_type == 'vec4':
+            attr[key] = FloatVectorProperty(
                 size=4,
-                name=prop_name,
+                name=title,
                 description=description,
-                default=default_value,
-                min=prop_min,
-                max=prop_max
+                default=default_value or (0, 0, 0, 0),
+                min=min_value,
+                max=max_value
             )
-
+        elif field_type == 'source_file':
+            attr[key] = StringProperty(
+                name=title,
+                description=description,
+                default=default_value or '',
+                subtype='FILE_PATH',
+                update=force_shader_reload
+            )
+    
         # And so on as needed.
 
     if not hasattr(bpy, 'foo_dynamic_property_groups'):
@@ -233,21 +218,30 @@ def register_dynamic_property_group(name: str, properties: list):
 
     # Unregister the previous instance if reloading
     if name in bpy.foo_dynamic_property_groups:
-        delattr(bpy.types.Scene, name)
+        # delattr(bpy.types.Scene, name)
         bpy.utils.unregister_class(bpy.foo_dynamic_property_groups[name])
 
-    # Instantiate a new PropertyGroup instance container.
+    # Instantiate a new BaseDynamicMaterialSettings instance container.
     # We add everything as property annotations for Blender 2.8+
-    clazz = type(name, (PropertyGroup,), { '__annotations__': attributes })
+    clazz = type(name, (base,), { '__annotations__': attr })
+    print('Register dynamic', clazz)
     bpy.utils.register_class(clazz)
 
     # Apply to scope
     # TODO: Allow scoping to something else. It's assumed this is just for
     # shader settings at the moment, so we just scope onto Scene
-    setattr(bpy.types.Scene, name, PointerProperty(type=clazz))
+    # setattr(bpy.types.Scene, name, PointerProperty(type=clazz))
     bpy.foo_dynamic_property_groups[name] = clazz
 
+def unregister_dynamic_property_group(name: str): 
+    if hasattr(bpy, 'foo_dynamic_property_groups') and name in bpy.foo_dynamic_property_groups:
+        clazz = bpy.foo_dynamic_property_groups[name]
+        print('Unregister dynamic', clazz)
 
+        bpy.utils.unregister_class(clazz)
+        del bpy.foo_dynamic_property_groups[name]
+    else:
+        print('Cannot find dynamic to unregister:', name)
 # def unregister_dynamic_property_groups():
 #     if hasattr(bpy, 'dynamic_property_groups'):
 #         for key, value in bpy.dynamic_property_groups.items():

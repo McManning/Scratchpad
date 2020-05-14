@@ -61,15 +61,16 @@ class FOO_RENDER_PT_settings_sources(BasePanel):
         col = layout.column(align=True)
         col.prop(settings, 'loader')
 
-        # Per-loader settings
-        if settings.loader == 'glsl':
-            col.prop(settings, 'vert_filename')
-            col.prop(settings, 'frag_filename')
-            col.prop(settings, 'tesc_filename')
-            col.prop(settings, 'tese_filename')
-            col.prop(settings, 'geom_filename')
-        elif settings.loader == 'ogsfx':
-            col.prop(settings, 'ogsfx_filename')
+        # Render dynamic properties if provided by the current shader
+        if hasattr(context.scene, 'foo_dynamic'):
+            layout.separator()
+            col = layout.column(align=True)
+
+            props = context.scene.foo_dynamic
+            # Annotations are used here because this is how we added *Property instances
+            # TODO: Support grouping in some way 
+            for name in props.__annotations__.keys():
+                col.prop(props, name)
 
         layout.separator()
 
@@ -94,6 +95,7 @@ class FOO_RENDER_PT_settings_sources(BasePanel):
                 col.label(text=line)
 
 class FOO_RENDER_PT_settings_shader_properties(BasePanel):
+    """Dynamic per-shader properties added to the render tab"""
     bl_label = 'Shader Properties'
     bl_parent_id = 'FOO_RENDER_PT_settings'
 
@@ -106,8 +108,8 @@ class FOO_RENDER_PT_settings_shader_properties(BasePanel):
         
         col = layout.column()
         
-        if not settings.last_shader_error and hasattr(context.scene, 'foo_shader_properties'):
-            props = context.scene.foo_shader_properties
+        if not settings.last_shader_error and hasattr(context.scene, 'foo_dynamic'):
+            props = context.scene.foo_dynamic
 
             # TODO: Less... magic
             for name in props.__annotations__.keys():
@@ -219,17 +221,40 @@ class FOO_MATERIAL_PT_settings(BasePanel):
     def poll(cls, context):   
         return context.material and BasePanel.poll(context)
 
-    @staticmethod
-    def draw_shared(self, mat):
+    def draw(self, context):
+        mat = context.material 
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        layout.prop(mat, "pass_index")
+        col = layout.column()
+        col.label(text='TODO: Anything common?')
+
+class FOO_MATERIAL_PT_settings_dynamic(BasePanel):
+    """Dynamic per-shader properties added to a material"""
+    bl_label = 'Shader Properties'
+    bl_parent_id = 'FOO_MATERIAL_PT_settings'
 
     def draw(self, context):
-        self.draw_shared(self, context.material)
-
+        mat = context.material
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        
+        settings = context.scene.foo
+        
+        col = layout.column()
+        
+        if settings.last_shader_error:
+            col.label(text='Resolve shader errors to see additional properties')
+        elif not hasattr(mat, 'foo_dynamic'):
+            col.label(text='No additional properties for the current shader')
+        else:
+            props = mat.foo_dynamic
+            # Annotations are used here because this is how we added *Property instances
+            # TODO: Support grouping in some way 
+            for name in props.__annotations__.keys():
+                col.prop(props, name)
 
 classes = (
     # Renderer panels
@@ -243,5 +268,6 @@ classes = (
 
     # Material panels
     FOO_PT_context_material,
-    FOO_MATERIAL_PT_settings
+    FOO_MATERIAL_PT_settings,
+    FOO_MATERIAL_PT_settings_dynamic
 )

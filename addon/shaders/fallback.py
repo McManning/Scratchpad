@@ -60,17 +60,7 @@ void main()
 '''
 
 class FallbackShader(Shader):
-    """Built-in fallback for when a user shader fails to load"""
-    name = 'Default'
-
-    def update_settings(self, settings):
-        # No settings used for the fallback
-        pass
-
-    def update_shader_properties(self, settings):
-        # no shader properties
-        pass
-
+    """Built-in default shader"""
     def recompile(self):
         self.prev_mtimes = []
         self.compile_from_strings(VS_FALLBACK, FS_FALLBACK)

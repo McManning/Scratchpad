@@ -26,18 +26,29 @@ class ShaderProperties:
     
     def add(
         self, 
-        name: str, 
-        description: str, 
-        prop_type: str, 
-        default_value = None, 
-        # TODO: Min/max should be float min and float max
-        min_value: float = -99999, 
-        max_value: float = 99999
+        field_type: str, 
+        key: str, 
+        title: str,
+        description: str  = '', 
+        default_value = None,
+        min_value: float = float('-inf'), 
+        max_value: float = float('inf')
     ):
+        """Add a new dynamic property
+
+        Parameters:
+            field_type (enum):       One of the accepted property types
+            key (str):              Lookup key for reading the value back
+            title (str):            Human readable title
+            description (str):      Hover description block for Blender
+            default_value (mixed):  Initial value, if not set
+            min_value (float):      Minimum value for field_type `float`
+            max_value (float):      Maximum value for field_type `float`
+        """
         self.definitions.append(
-            (name, description, prop_type, default_value, min_value, max_value)
+            (field_type, key, title, description, default_value, min_value, max_value)
         )
-        self.values[name] = default_value
+        self.values[key] = default_value
     
     def clear(self):
         self.definitions = []
@@ -45,10 +56,10 @@ class ShaderProperties:
 
     def from_property_group(self, settings):
         """Load current values from a PropertyGroup"""
-        for name in self.values.keys():
-            self.values[name] = getattr(settings, name)
+        for key in self.values.keys():
+            self.values[key] = getattr(settings, key)
 
-        # TODO: Does this also perform UPLOAD for the shader?
+        # TODO: Should this also perform UPLOAD for the shader (textures, etc)
         # I would assume so, right? 
 
 class LightData:
@@ -163,7 +174,6 @@ class Shader:
         self.program = None
         self.prev_mtimes = []
         self.monitored_files = []
-        self.properties = ShaderProperties()
 
     def needs_recompile(self) -> bool:
         """Does this shader need to be recompiled from updated settings"""
@@ -283,15 +293,42 @@ class Shader:
     def update_settings(self, settings):
         """Read settings universal to the renderer
         
-        :param settings: FooRendererSettings instance (I think?)
+        Parameters:
+            settings (FooRendererSettings): Instance to read
         """
-        raise Exception('Must be implemented by a concrete class')
+        pass
 
-    def update_shader_properties(self, settings):
-        """Update local ShaderProperties from the provided PropertyGroup
+    def get_renderer_properties(self):
+        """Retrieve a ShaderProperties for dynamic renderer properties
+
+        Returns:
+            ShaderProperties
+        """
+        return None
+
+    def update_renderer_properties(self, settings):
+        """Update ShaderProperties from the PropertyGroup
         
-        :param settings: PropertyGroup to read"""
-        raise Exception('Must be implemented by a concrete class')
+        Parameters:
+            settings (PropertyGroup): Instance to read
+        """
+        pass
+
+    def get_material_properties(self):
+        """Retrieve a ShaderProperties for dynamic per-material properties
+
+        Returns:
+            ShaderProperties
+        """
+        return None
+
+    def update_material_properties(self, settings):
+        """Update ShaderProperties from the PropertyGroup
+
+        Parameters:
+            settings (PropertyGroup): Instance to read
+        """
+        pass
 
     def recompile(self):
         """Recompile the shader from sources"""

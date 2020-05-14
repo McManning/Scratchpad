@@ -2,7 +2,7 @@
 import bpy
 
 class FooReloadSourcesOperator(bpy.types.Operator):
-    """Operator to force reload of shader source files"""
+    """Force reload of shader source files"""
     bl_idname = 'foo.reload_sources'
     bl_label = 'Reload Shader Sources'
     # bl_options = {'INTERNAL'}

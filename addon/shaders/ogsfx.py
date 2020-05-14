@@ -4,6 +4,7 @@ from typing import List
 
 from .base import (
     Shader, 
+    ShaderProperties,
     VertexData, 
     LightData
 )
@@ -15,30 +16,46 @@ from .fallback import (
 
 class OGSFXShader(Shader):
     """Load an OGSFX source file as a shader"""
-    name = 'Maya OGSFX'
 
-    def update_settings(self, settings):
-        if not os.path.isfile(settings.ogsfx_filename):
+    def __init__(self):
+        super(OGSFXShader, self).__init__()
+
+        self.properties = ShaderProperties()
+        self.properties.add('source_file', 'filename', 'Filename', '.ogsfx file to load')
+
+        self.material_properties = ShaderProperties()
+
+    def get_renderer_properties(self):
+        return self.properties
+
+    def update_renderer_properties(self, settings):
+        self.properties.from_property_group(settings)
+
+        if not os.path.isfile(settings.filename):
             raise FileNotFoundError('Missing required OGSFX file')
         
-        self.filename = settings.ogsfx_filename
-        self.monitored_files = [settings.ogsfx_filename]
+        self.filename = settings.filename
+        self.monitored_files = [settings.filename]
 
-    def update_shader_properties(self, settings):
-        self.properties.from_property_group(settings)
+    def get_material_properties(self):
+        return self.material_properties
+
+    def update_material_properties(self, settings):
+        self.material_properties.from_property_group(settings)
         # TODO: Texture reloading or something? Here or in the ShaderProperties?
-
+        
     def recompile(self):
         # For now, uses fallback
         self.compile_from_strings(VS_FALLBACK, FS_FALLBACK)
         self.update_mtimes()
 
         # Pretend some settings have loaded from the .ogsfx
-        self.properties.clear()
-        self.properties.add('fizz', 'Some Fizz', 'float', 0.5)
-        self.properties.add('buzz', 'so buzz', 'float', 0, 0, 1.0)
-        self.properties.add('my_color', 'my color', 'color', (1.0, 0.15, 0.15))
-        self.properties.add('my_bool', 'Some boolean prop', 'boolean', True)
+        props = self.get_material_properties()
+        props.clear()
+        
+        props.add('float', 'buzz', 'Mat Buzz', 'More info about mat buzz', 0, 0, 1.0)
+        props.add('color', 'my_color', 'my color', 'more info about color', (1.0, 0.15, 0.15))
+        props.add('boolean', 'my_bool', 'Some boolean')
 
     def set_camera_matrices(self, view_matrix, projection_matrix):
         self.view_matrix = view_matrix
