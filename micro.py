@@ -140,11 +140,25 @@ class Shader:
     def __init__(self):
         self.program = None
         self.prev_mtimes = []
+        self.monitored_files = []
+        self.stages = {}
 
-    def set_sources(self, vert: str, frag: str, geom: str = None):
-        self.vert = vert 
-        self.frag = frag 
-        self.geom = geom
+    def update_settings(self, settings):
+        if not os.path.isfile(settings.vert_filename):
+            raise FileNotFoundError('Missing required vertex shader')
+            
+        if not os.path.isfile(settings.frag_filename):
+            raise FileNotFoundError('Missing required fragment shader')
+        
+        self.stages = { 
+            'vs': settings.vert_filename,
+            'fs': settings.frag_filename,
+            'tcs': settings.tesc_filename, 
+            'tes': settings.tese_filename,
+            'gs': settings.geom_filename
+        }
+        
+        self.monitored_files = [f for f in self.stages.values() if f]
         # We keep prev_mtimes - in case this was called with the same files
 
     def compile_from_fallback(self):
@@ -153,21 +167,7 @@ class Shader:
 
     def mtimes(self):
         """Aggregate file modication times from sources"""
-        if not os.path.isfile(self.vert):
-            raise FileNotFoundError('Missing required vertex shader')
-            
-        if not os.path.isfile(self.frag):
-            raise FileNotFoundError('Missing required fragment shader')
-            
-        mtimes = [
-            os.stat(self.vert).st_mtime,
-            os.stat(self.frag).st_mtime
-        ]
-
-        if self.geom:
-            mtimes.append(os.stat(self.geom).st_mtime)
-        
-        return mtimes
+        return [os.stat(file).st_mtime for file in self.monitored_files]
 
     def mtimes_changed(self) -> bool:
         """Check if the file update time has changed in any of the source files"""
@@ -483,14 +483,9 @@ class FooRenderEngine(bpy.types.RenderEngine):
         """Check if we should reload the shader sources"""
         settings = context.scene.foo
 
-        self.user_shader.set_sources(
-            settings.vert_filename,
-            settings.frag_filename,
-            settings.geom_filename
-        )
-        
         # Check for readable source files and changes
         try:
+            self.user_shader.update_settings(settings)
             has_user_shader_changes = self.user_shader.mtimes_changed()
         except Exception as e:
             settings.last_shader_error = str(e)
@@ -588,21 +583,21 @@ class FooRendererSettings(PropertyGroup):
         update=force_shader_reload
     )
     
-    # tesc_filename: StringProperty(
-    #     name='Tess Control Shader',
-    #     description='Source file path',
-    #     default='',
-    #     subtype='FILE_PATH',
-    #     update=force_shader_reload
-    # )
+    tesc_filename: StringProperty(
+        name='Tess Control Shader',
+        description='Source file path',
+        default='',
+        subtype='FILE_PATH',
+        update=force_shader_reload
+    )
     
-    # tese_filename: StringProperty(
-    #     name='Tess Evaluation Shader',
-    #     description='Source file path',
-    #     default='',
-    #     subtype='FILE_PATH',
-    #     update=force_shader_reload
-    # )
+    tese_filename: StringProperty(
+        name='Tess Evaluation Shader',
+        description='Source file path',
+        default='',
+        subtype='FILE_PATH',
+        update=force_shader_reload
+    )
     
     geom_filename: StringProperty(
         name='Geometry Shader',
@@ -751,8 +746,9 @@ class FOO_RENDER_PT_settings_sources(BasePanel):
         col = layout.column(align=True)
         col.prop(settings, 'vert_filename')
         col.prop(settings, 'frag_filename')
+        col.prop(settings, 'tesc_filename')
+        col.prop(settings, 'tese_filename')
         col.prop(settings, 'geom_filename')
-        # col.prop(settings, 'tesc_filename')
         
         layout.separator()
          
