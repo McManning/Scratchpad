@@ -1,6 +1,5 @@
 
-#ifndef _COMMON_GLSL_
-#define _COMMON_GLSL_
+#pragma once
 
 // Transformation matrices
 uniform mat4 ModelMatrix;
@@ -12,5 +11,3 @@ uniform mat4 CameraMatrix;
 
 // Scene information
 uniform int _Frame;
-
-#endif // _COMMON_GLSL_

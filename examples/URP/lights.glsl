@@ -1,6 +1,5 @@
 
-#ifndef _LIGHTS_GLSL_
-#define _LIGHTS_GLSL_
+#pragma once
 
 #include "common.glsl"
 
@@ -166,5 +165,3 @@ vec4 LightweightFragmentBlinnPhong(vec3 positionWS, vec3 normalWS, vec3 viewDire
     vec3 finalColor = diffuseColor * diffuse + emission;
     return vec4(finalColor, alpha);
 }
-
-#endif // _LIGHTS_GLSL_
