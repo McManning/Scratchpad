@@ -116,10 +116,11 @@ class FooRenderEngine(bpy.types.RenderEngine):
                 self.update_mesh(obj, depsgraph)
             elif obj.type == 'LIGHT':
                 self.update_light(obj)
-            else:
-                print('Unhandled scene object type', obj.type)
+            # else:
+            #     print('Unhandled scene object type', obj.type)
                 
         self.meshes = self.updated_meshes
+        self.lights.ambient_color = context.scene.foo.ambient_color
         self.lights.additional_lights = self.updated_additional_lights
     
     def update_mesh(self, obj, depsgraph):
@@ -183,12 +184,13 @@ class FooRenderEngine(bpy.types.RenderEngine):
                 self.user_shader = shader_impl()
                 settings.last_shader_error = ''
 
+                print('Swap dynamic properties')
                 # On shader change, update the dynamic renderer properties to match
-                unregister_dynamic_property_group('foo_renderer_dynamic')
+                unregister_dynamic_property_group('FooRendererDynamicProperties')
                 props = self.user_shader.get_renderer_properties()
                 if props:
                     register_dynamic_property_group(
-                        'foo_renderer_dynamic', 
+                        'FooRendererDynamicProperties', 
                         BaseDynamicRendererSettings,
                         props.definitions
                     )
@@ -220,11 +222,11 @@ class FooRenderEngine(bpy.types.RenderEngine):
                 self.shader = self.user_shader
                 
                 # Load new dynamic material properties into context
-                unregister_dynamic_property_group('foo_material_dynamic')
+                unregister_dynamic_property_group('FooMaterialDynamicProperties')
                 props = self.user_shader.get_material_properties()
                 if props:
                     register_dynamic_property_group(
-                        'foo_material_dynamic', 
+                        'FooMaterialDynamicProperties', 
                         BaseDynamicMaterialSettings,
                         props.definitions
                     )
