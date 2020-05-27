@@ -79,8 +79,8 @@ class VertexData:
         glGenVertexArrays(1, VAO)
         self.VAO = VAO[0]
 
-        VBO = Buffer(GL_INT, 2)
-        glGenBuffers(2, VBO)
+        VBO = Buffer(GL_INT, 3)
+        glGenBuffers(3, VBO)
         self.VBO = VBO
 
         EBO = Buffer(GL_INT, 1)
@@ -115,6 +115,11 @@ class VertexData:
         glBufferData(GL_ARRAY_BUFFER, len(self.normals) * 4, self.normals, GL_STATIC_DRAW)
         shader.set_vertex_attribute('Normal', 0)
 
+        # Copy texture UVs (one channel)
+        glBindBuffer(GL_ARRAY_BUFFER, self.VBO[2])
+        glBufferData(GL_ARRAY_BUFFER, len(self.texcoord0) * 4, self.texcoord0, GL_STATIC_DRAW)
+        shader.set_vertex_attribute('Texcoord0', 0)
+        
         # TODO: Tangent, Binormal, Color, Texcoord0-7
         # TODO: Probably don't do per-mesh VAO. See: https://stackoverflow.com/a/18487155
 
@@ -287,6 +292,23 @@ class Shader:
         location = glGetAttribLocation(self.program, name)
         glEnableVertexAttribArray(location)
         glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, stride, 0)
+
+    def bind_texture(self, idx: int, uniform: str, image):
+        location = glGetUniformLocation(self.program, uniform)
+        if location < 0:
+            print('uniform not found', uniform) 
+            return
+
+        # TODO: What about live editing textures?
+        if image.bindcode < 1:
+            image.gl_load()
+        
+        print('bind code', image.bindcode)
+
+        # TODO: glTexParameteri calls
+        glActiveTexture(GL_TEXTURE0 + idx)
+        glBindTexture(GL_TEXTURE_2D, image.bindcode)
+        glUniform1i(location, idx)
 
     # Core methods to be implemented by different shader formats
 

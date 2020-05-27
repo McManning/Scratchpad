@@ -30,6 +30,7 @@ class GLSLShader(Shader):
         self.properties.add('source_file', 'geom_filename', 'Geometry', 'GLSL Geometry shader source file')
         self.properties.add('source_file', 'frag_filename', 'Fragment', 'GLSL Fragment shader source file')
 
+        self.properties.add('image', 'diffuse', 'Diffuse', 'Diffuse color channel image')
         self.material_properties = ShaderProperties()
 
     def get_renderer_properties(self):
@@ -53,6 +54,9 @@ class GLSLShader(Shader):
         }
         
         self.monitored_files = [f for f in self.stages.values() if f]
+
+        # TODO: More dynamic (iterate properties, track each one that's an image)
+        self.diffuse = settings.diffuse
 
     def get_material_properties(self):
         return self.material_properties
@@ -93,11 +97,19 @@ class GLSLShader(Shader):
 
         self.update_mtimes()
 
+    def bind_textures(self):
+        if self.diffuse:
+            print('binding diffuse', self.diffuse.bindcode)
+            self.bind_texture(0, 'diffuse', self.diffuse)
+        else:
+            print('no diffuse')
+
     def bind(self):
         super(GLSLShader, self).bind()
 
         # TODO: Doesn't work, number too big. Change this up
         # self.set_float("_Time", time())
+        self.bind_textures()
 
     def set_camera_matrices(self, view_matrix, projection_matrix):
         self.view_matrix = view_matrix

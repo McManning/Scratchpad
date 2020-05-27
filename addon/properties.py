@@ -110,9 +110,9 @@ class FooLightSettings(PropertyGroup):
         del bpy.types.Light.foo
 
 class BaseDynamicRendererSettings(PropertyGroup):
+    """Base class for groups registered with register_dynamic_property_group()"""
     @classmethod
     def register(cls):
-        print('Called register for ', cls)
         bpy.types.Scene.foo_dynamic = PointerProperty(
             name='Foo Dynamic Renderer Settings',
             description='',
@@ -124,9 +124,9 @@ class BaseDynamicRendererSettings(PropertyGroup):
         del bpy.types.Scene.foo_dynamic
 
 class BaseDynamicMaterialSettings(PropertyGroup):
+    """Base class for groups registered with register_dynamic_property_group()"""
     @classmethod
     def register(cls):
-        print('Called register for ', cls)
         bpy.types.Material.foo_dynamic = PointerProperty(
             name='Foo Dynamic Material Settings',
             description='',
@@ -137,18 +137,19 @@ class BaseDynamicMaterialSettings(PropertyGroup):
     def unregister(cls):
         del bpy.types.Material.foo_dynamic
 
-def register_dynamic_property_group(name: str, base: PropertyGroup, properties: list):
+def register_dynamic_property_group(class_name: str, base: PropertyGroup, properties: list):
     """Create a named PropertyGroup from a configuration list at runtime
 
     Parameters:
-        name (str):             Class name to use
+        class_name (str):       Class name to generate (used for unregister_dynamic...)
         base (PropertyGroup):   Base property group class to inherit the new class
         properties (list):      List in the shape [(key, title, description, type, default_value, min*, max*)]
     """
     # Map a key to a *Property() class instance
     attr = {}
+    images = []
 
-    print('Register dynamic', name, base, properties)
+    print('Register dynamic', class_name, base, properties)
 
     for prop in properties:
         field_type, key, title, description, default_value, min_value, max_value = prop
@@ -210,38 +211,66 @@ def register_dynamic_property_group(name: str, base: PropertyGroup, properties: 
                 subtype='FILE_PATH',
                 update=force_shader_reload
             )
-    
+        elif field_type == 'image':
+            # Typically, accessing bpy.types.* would be unsafe
+            # while loading addons during boot. But since this 
+            # is a dynamically registered instance, it's assumed
+            # this ends up being registered after initial load.
+            attr[key] = PointerProperty(
+                name=title,
+                description=description,
+                type=bpy.types.Image
+            )
+
+            # TODO: COULD add a view toggle boolean here as well
+            # if the image (or texture) input field becomes too large.
+
+            # Add extra metadata to track this image input
+            images.append(key)
+
         # And so on as needed.
 
     if not hasattr(bpy, 'foo_dynamic_property_groups'):
         bpy.foo_dynamic_property_groups = {}
 
     # Unregister the previous instance if reloading
-    if name in bpy.foo_dynamic_property_groups:
-        # delattr(bpy.types.Scene, name)
-        bpy.utils.unregister_class(bpy.foo_dynamic_property_groups[name])
+    if class_name in bpy.foo_dynamic_property_groups:
+        # delattr(bpy.types.Scene, class_name)
+        bpy.utils.unregister_class(bpy.foo_dynamic_property_groups[class_name])
 
     # Instantiate a new BaseDynamicMaterialSettings instance container.
     # We add everything as property annotations for Blender 2.8+
-    clazz = type(name, (base,), { '__annotations__': attr })
+    clazz = type(class_name, (base,), { '__annotations__': attr })
+    clazz.images = images 
+
     print('Register dynamic', clazz)
     bpy.utils.register_class(clazz)
 
-    # Apply to scope
-    # TODO: Allow scoping to something else. It's assumed this is just for
-    # shader settings at the moment, so we just scope onto Scene
+    # Apply to scope - no longer applicable, class has its own @register method
     # setattr(bpy.types.Scene, name, PointerProperty(type=clazz))
-    bpy.foo_dynamic_property_groups[name] = clazz
 
-def unregister_dynamic_property_group(name: str): 
-    if hasattr(bpy, 'foo_dynamic_property_groups') and name in bpy.foo_dynamic_property_groups:
-        clazz = bpy.foo_dynamic_property_groups[name]
+    # track for unregister_dynamic_property_group
+    bpy.foo_dynamic_property_groups[class_name] = clazz
+
+def unregister_dynamic_property_group(class_name: str):     
+    """"Remove a PropertyGroup previously created by register_dynamic_property_group
+    
+    Parameters:
+        class_name (str): Class name to unregister
+    """
+    if hasattr(bpy, 'foo_dynamic_property_groups') and class_name in bpy.foo_dynamic_property_groups:
+        clazz = bpy.foo_dynamic_property_groups[class_name]
         print('Unregister dynamic', clazz)
 
-        bpy.utils.unregister_class(clazz)
-        del bpy.foo_dynamic_property_groups[name]
+        try:
+            bpy.utils.unregister_class(clazz)
+        except: 
+            pass
+        
+        del bpy.foo_dynamic_property_groups[class_name]
     else:
-        print('Cannot find dynamic to unregister:', name)
+        print('Cannot find dynamic to unregister:', class_name)
+
 # def unregister_dynamic_property_groups():
 #     if hasattr(bpy, 'dynamic_property_groups'):
 #         for key, value in bpy.dynamic_property_groups.items():
