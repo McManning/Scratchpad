@@ -3,15 +3,13 @@ import os
 from time import time
 
 from .base import (
-    Shader, 
+    BaseShader, 
     ShaderProperties,
-    VertexData, 
-    LightData
 )
 
 from ..parsers.glsl.preprocessor import GLSLPreprocessor
 
-class GLSLShader(Shader):
+class GLSLShader(BaseShader):
     """Direct GLSL shader from GLSL source files"""
 
     # Version directive to automatically add to source files
@@ -24,6 +22,9 @@ class GLSLShader(Shader):
         super(GLSLShader, self).__init__()
 
         self.properties = ShaderProperties()
+        # self.properties.add('boolean', 'use_composite_file', 'Use Separate Stage Sources', '')
+        # self.properties.add('source_file', 'composite_file', 'Source File', 'GLSL Source file containing all stages')
+
         self.properties.add('source_file', 'vert_filename', 'Vertex', 'GLSL Vertex shader source file')
         self.properties.add('source_file', 'tesc_filename', 'Tessellation Control', 'GLSL Tessellation Control shader source file')
         self.properties.add('source_file', 'tese_filename', 'Tessellation Evaluation', 'GLSL Tessellation Evaluation shader source file')
@@ -79,6 +80,7 @@ class GLSLShader(Shader):
             source = None
             if filename:
                 # TODO: Stage defines (e.g. #define VERTEX - useful?)
+                # Would be more useful if there was a single input field
                 source = '#version {}\n{}'.format(
                     self.COMPAT_VERSION, 
                     preprocessor.parse_file(filename)
@@ -98,6 +100,7 @@ class GLSLShader(Shader):
         self.update_mtimes()
 
     def bind_textures(self):
+        # TODO: WIP
         if self.diffuse:
             print('binding diffuse', self.diffuse.bindcode)
             self.bind_texture(0, 'diffuse', self.diffuse)
@@ -127,14 +130,18 @@ class GLSLShader(Shader):
         self.set_mat4("ModelViewMatrix", mv.transposed())
         self.set_mat4("ModelViewProjectionMatrix", mvp.transposed())
         
-    def set_lights(self, data: LightData):
+    def set_lighting(self, lighting):
         """Copy lighting information into shader uniforms
         
         This is inspired by Unity's URP where there is a main directional light
         and a number of secondary lights packed into an array buffer. 
 
         This particular implementation doesn't account for anything advanced
-        like shadows, light cookies, etc. 
+        like shadows, light cookies, etc. Nor does it try to calculate per-object
+        light arrays to support a ridiculous number of lights. 
+
+        Parameters:
+            lighting (SceneLighting): Current scene lighting information
         """
         limit = self.MAX_ADDITIONAL_LIGHTS
 
@@ -145,7 +152,7 @@ class GLSLShader(Shader):
 
         # Feed lights into buffers
         i = 0
-        for light in data.additional_lights.values():
+        for light in lighting.additional_lights.values():
             # print('Light', i)
             v = light.position
             # print('    Position', v)
@@ -177,9 +184,9 @@ class GLSLShader(Shader):
 
             i += 1
         
-        if data.main_light:
-            self.set_vec4("_MainLightDirection", data.main_light.direction)
-            self.set_vec4("_MainLightColor", data.main_light.color)
+        if lighting.main_light:
+            self.set_vec4("_MainLightDirection", lighting.main_light.direction)
+            self.set_vec4("_MainLightColor", lighting.main_light.color)
 
         self.set_int("_AdditionalLightsCount", i)
         self.set_vec4_array("_AdditionalLightsPosition", positions)
@@ -187,12 +194,4 @@ class GLSLShader(Shader):
         self.set_vec4_array("_AdditionalLightsSpotDir", directions)
         self.set_vec4_array("_AdditionalLightsAttenuation", attenuations)
         
-        self.set_vec3("_AmbientColor", data.ambient_color)
-
-    def create_vertex_data(self) -> VertexData:
-        data = VertexData()
-        data.use_standard_format()
-        return data
-
-    def upload_vertex_data(self, data: VertexData):
-        data.upload_standard_format(self)
+        self.set_vec3("_AmbientColor", lighting.ambient_color)

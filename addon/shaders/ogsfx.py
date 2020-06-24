@@ -3,10 +3,8 @@ import os
 from typing import List
 
 from .base import (
-    Shader, 
+    BaseShader, 
     ShaderProperties,
-    VertexData, 
-    LightData
 )
 
 from .fallback import (
@@ -14,7 +12,7 @@ from .fallback import (
     FS_FALLBACK
 )
 
-class OGSFXShader(Shader):
+class OGSFXShader(BaseShader):
     """Load an OGSFX source file as a shader"""
 
     def __init__(self):
@@ -73,17 +71,13 @@ class OGSFXShader(Shader):
         self.set_mat4("ModelViewMatrix", mv.transposed())
         self.set_mat4("ModelViewProjectionMatrix", mvp.transposed())
         
-    def set_lights(self, data: LightData):
-        # No lighting information used for the fallback
+    def set_lighting(self, lighting):
+        """...
+        
+        Parameters:
+            lighting (SceneLighting): Current scene lighting information
+        """
         pass
-
-    def create_vertex_data(self) -> VertexData:
-        data = VertexData()
-        data.use_standard_format()
-        return data
-
-    def upload_vertex_data(self, data: VertexData):
-        data.upload_standard_format(self)
 
     def bind(self):
         super(OGSFXShader, self).bind()

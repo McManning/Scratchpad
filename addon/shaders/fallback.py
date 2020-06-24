@@ -1,9 +1,5 @@
 
-from .base import (
-    Shader, 
-    VertexData, 
-    LightData
-)
+from .base import BaseShader
 
 # Fallback shaders if custom shader compilation fails
 VS_FALLBACK = '''
@@ -59,7 +55,7 @@ void main()
 }
 '''
 
-class FallbackShader(Shader):
+class FallbackShader(BaseShader):
     """Built-in default shader"""
     def recompile(self):
         self.prev_mtimes = []
@@ -81,14 +77,6 @@ class FallbackShader(Shader):
         self.set_mat4("ModelViewMatrix", mv.transposed())
         self.set_mat4("ModelViewProjectionMatrix", mvp.transposed())
         
-    def set_lights(self, data: LightData):
+    def set_lighting(self, lighting):
         # No lighting information used for the fallback
         pass
-
-    def create_vertex_data(self) -> VertexData:
-        data = VertexData()
-        data.use_standard_format()
-        return data
-
-    def upload_vertex_data(self, data: VertexData):
-        data.upload_standard_format(self)

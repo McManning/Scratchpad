@@ -18,12 +18,6 @@ class ShaderProperties:
     def __init__(self):
         self.clear()
 
-    # def serialize(self) -> str:
-    #     return json.dumps(self.props)
-
-    # def deserialize(self, value: str):
-    #     self.props = json.load(value)
-    
     def add(
         self, 
         field_type: str, 
@@ -62,85 +56,12 @@ class ShaderProperties:
         # TODO: Should this also perform UPLOAD for the shader (textures, etc)
         # I would assume so, right? 
 
-class LightData:
-    """Light data to upload to the GPU"""
-    def __init__(self):
-        self.ambient_color = (0, 0, 0)
-        self.main_light = None 
-        self.additional_lights = dict()
-
-class VertexData:
-    """Vertex/Index buffer data to upload to the GPU.
-    
-    How this data is uploaded depends on the shader
-    """
-    def use_standard_format(self):
-        VAO = Buffer(GL_INT, 1)
-        glGenVertexArrays(1, VAO)
-        self.VAO = VAO[0]
-
-        VBO = Buffer(GL_INT, 3)
-        glGenBuffers(3, VBO)
-        self.VBO = VBO
-
-        EBO = Buffer(GL_INT, 1)
-        glGenBuffers(1, EBO)
-        self.EBO = EBO[0]
-        
-        self.vertices = []
-        self.normals = []
-        self.indices = []
-        self.indices_size = 0
-
-    # ..and in cleanup: 
-    # might need to be buffer refs
-    # glDeleteVertexArrays(1, VAO)
-    # glDeleteBuffers(1, VBO)
-    # glDeleteBuffers(1, EBO)
-
-    # TODO: Might want a "load from mesh" or something call here.
-    # So the Mesh class isn't responsible for inserting that data here.
-
-    def upload_standard_format(self, shader):
-        # Bind the VAO so we can upload new buffers
-        glBindVertexArray(self.VAO)
-
-        # Copy verts
-        glBindBuffer(GL_ARRAY_BUFFER, self.VBO[0])
-        glBufferData(GL_ARRAY_BUFFER, len(self.vertices) * 4, self.vertices, GL_STATIC_DRAW) # GL_STATIC_DRAW - for inactive mesh
-        shader.set_vertex_attribute('Position', 0)
-
-        # Copy normals
-        glBindBuffer(GL_ARRAY_BUFFER, self.VBO[1])
-        glBufferData(GL_ARRAY_BUFFER, len(self.normals) * 4, self.normals, GL_STATIC_DRAW)
-        shader.set_vertex_attribute('Normal', 0)
-
-        # Copy texture UVs (one channel)
-        glBindBuffer(GL_ARRAY_BUFFER, self.VBO[2])
-        glBufferData(GL_ARRAY_BUFFER, len(self.texcoord0) * 4, self.texcoord0, GL_STATIC_DRAW)
-        shader.set_vertex_attribute('Texcoord0', 0)
-        
-        # TODO: Tangent, Binormal, Color, Texcoord0-7
-        # TODO: Probably don't do per-mesh VAO. See: https://stackoverflow.com/a/18487155
-
-        # Copy indices
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.EBO)
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, len(self.indices) * 4, self.indices, GL_STATIC_DRAW)
-
-        # Cleanup, just so bad code elsewhere doesn't also write to this VAO
-        glBindVertexArray(0)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
-
-        self.indices_size = len(self.indices)
-        
-
 def compile_glsl(src: str, stage_flag: int) -> int:
     shader = glCreateShader(stage_flag)
     glShaderSource(shader, src)
     glCompileShader(shader)
 
-    #Check for compile errors
+    # Check for compile errors
     shader_ok = Buffer(GL_INT, 1)
     glGetShaderiv(shader, GL_COMPILE_STATUS, shader_ok)
 
@@ -169,7 +90,7 @@ def compile_glsl(src: str, stage_flag: int) -> int:
     raise CompileError(stage + ' Shader Error:\n' + err)
 
 
-class Shader:
+class BaseShader:
     """Base encapsulation of shader compilation and configuration.
     
     Different shader abstraction formats inherit from this base, 
@@ -287,24 +208,14 @@ class Shader:
 
         glUniform4f(location, value[0], value[1], value[2], value[3])
         
-    def set_vertex_attribute(self, name: str, stride: int):
-        """Enable a vertex attrib array and set the pointer for GL_ARRAY_BUFFER reads"""
-        location = glGetAttribLocation(self.program, name)
-        glEnableVertexAttribArray(location)
-        glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, stride, 0)
-
     def bind_texture(self, idx: int, uniform: str, image):
         location = glGetUniformLocation(self.program, uniform)
-        if location < 0:
-            print('uniform not found', uniform) 
-            return
+        if location < 0: return
 
-        # TODO: What about live editing textures?
+        # If it's not on the GPU yet, get Blender to upload it.
         if image.bindcode < 1:
             image.gl_load()
         
-        print('bind code', image.bindcode)
-
         # TODO: glTexParameteri calls
         glActiveTexture(GL_TEXTURE0 + idx)
         glBindTexture(GL_TEXTURE_2D, image.bindcode)
@@ -354,26 +265,20 @@ class Shader:
 
     def recompile(self):
         """Recompile the shader from sources"""
-        raise Exception('Must be implemented by a concrete class')
+        raise NotImplementedError('Must be implemented by a concrete class')
 
     def set_camera_matrices(self, view_matrix, projection_matrix):
         """Set per-camera matrices"""
-        raise Exception('Must be implemented by a concrete class')
+        raise NotImplementedError('Must be implemented by a concrete class')
 
     def set_object_matrices(self, model_matrix):
         """Set per-object matrices"""
-        raise Exception('Must be implemented by a concrete class')
+        raise NotImplementedError('Must be implemented by a concrete class')
         
-    def set_lights(self, data: LightData):
-        """Set lighting uniforms"""
-        raise Exception('Must be implemented by a concrete class')
-
-    def create_vertex_data(self) -> VertexData:
-        """Instantiate a new VAO/VBO/etc to store per-mesh vertex data"""
-        raise Exception('Must be implemented by a concrete class')
-
-    def upload_vertex_data(self, data: VertexData):
-        """Reupload vertex data to the GPU on change"""
-        # This differs per-shader, as some may require specific 
-        # `in` params based on how they were compiled 
-        raise Exception('Must be implemented by a concrete class')
+    def set_lighting(self, lighting):
+        """Set lighting uniforms
+        
+        Parameters:
+            lighting (SceneLighting): Current scene lighting information
+        """
+        raise NotImplementedError('Must be implemented by a concrete class')
