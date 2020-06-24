@@ -13,14 +13,14 @@ from bpy.props import (
 
 from bpy.types import PropertyGroup
 
-from .shaders import shaders
+from .shaders import SUPPORTED_SHADERS
 
 def force_shader_reload(self, context):
     """Callback when any of the shader filenames change in FooRenderSettings"""
     context.scene.foo.force_reload = True
 
 # Generate a Blender enum list for available shader loaders
-LOADERS = [(s[0], s[0], s[1].__doc__, '', i) for i, s in enumerate(shaders)]
+LOADERS = [(s[0], s[0], s[1].__doc__, '', i) for i, s in enumerate(SUPPORTED_SHADERS)]
 
 class FooRendererSettings(PropertyGroup):
     loader: EnumProperty(

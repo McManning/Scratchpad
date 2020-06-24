@@ -16,7 +16,7 @@ from .renderables import (
 )
 
 from .shaders.fallback import FallbackShader
-from .shaders import shaders
+from .shaders import SUPPORTED_SHADERS 
 
 from .properties import (
     register_dynamic_property_group, 
@@ -134,11 +134,16 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
         # Copy updated vertex data to the GPU, if modified since last render
         if rebuild_geometry:
-            mesh.rebuild(obj.evaluated_get(depsgraph), self.shader)
+            mesh.rebuild(obj.evaluated_get(depsgraph))
         
         self.updated_meshes[obj.name] = mesh
         
     def update_light(self, obj):
+        """Track an updated light in the scene
+        
+        Parameters:
+            obj (bpy.types.Object)
+        """
         light_type = obj.data.type 
 
         if light_type == 'SUN':
@@ -191,7 +196,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
         # Check if the selected shader has changed from what's  
         # currently loaded and if so, instantiate a new one
-        for shader in shaders:
+        for shader in SUPPORTED_SHADERS:
             name = shader[0]
             shader_impl = shader[1]
             if settings.loader == name and not isinstance(self.user_shader, shader_impl):
