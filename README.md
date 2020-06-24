@@ -1,8 +1,10 @@
 # Foo Render Engine (Final Name Pending)
 
-Custom GLSL Render Engines for Blender 2.8+
+Pure Python render engine for Blender 2.8+. 
 
-This project contains a full render engine implementation and a single .py micro engine.
+This addon allows a developer to write realtime viewport shaders as GLSL code with as much access to the render pipeline as possible.
+
+The Github project contains both the full render engine addon and a simplified `micro.py` standalone version.
 
 ## Requirements
 
@@ -14,8 +16,13 @@ This project contains a full render engine implementation and a single .py micro
 * Full GLSL pipeline - including Geometry and Tessellation shaders
 * Support for #include directives
 * Hot reloading of shader source files when changed on disk
-* (Some) support for Maya's OGSFX shader format
+
+## Planned Features
+
+* (Some) support for Maya's OGSFX shader format and other external formats
 * Dynamic property editors from shader annotations
+* Multiple shader passes
+* Compute-based pipelines - e.g. running a custom compute tessellator before passing data off to the standard stages
 
 ## Limitations
 
@@ -27,28 +34,12 @@ Lighting is limited to one directional light and up to 16 point lights. Other li
 
 No per-material shaders (...yet)
 
-There is no integration with Blender's shader nodes, nor is it planned.
+There is no integration with Blender's shader nodes, nor is it a design goal. 
 
-Tested on Windows 10. YMMV on OSX.
+Tested on Windows 10. YMMV on other platforms. 
 
 # Micro Engine
 
-A standalone micro version of the library is included as `micro.py`. 
+A standalone micro version of the library is included as `micro.py` with a reduced set of features.
 
-If you are looking for a simple base for building your own render engine, or want to do something more Shadertoy-esque in Blender, try this instead of the full addon.
-
-## Features
-
-* Full GLSL pipeline - including Geometry and Tessellation shaders
-* Hot reloading of shader source files when changed on disk
-
-
-# Contributing
-
-Pull requests are welcome for new features and bug fixes. 
-
-## Running Tests
-
-Run `python -m unittest discover test`
-
-Tests currently ignore modules that depend on Blender modules (bpy, bgl, etc)
+If you are looking for a simple base to build your own render engine, or want to do something more Shadertoy-esque in Blender, try this instead of the full addon.
