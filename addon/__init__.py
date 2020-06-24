@@ -11,12 +11,7 @@ bl_info = {
     'category': 'Render'
 }
 
-# support reloading sub-modules
-# This comes from Blender's bl_ui startup addon
-if 'bpy' in locals():
-    from importlib import reload
-    _modules_loaded[:] = [reload(val) for val in _modules_loaded]
-    del reload
+# TODO: Reloading isn't working for anything in renderables.
 
 _modules = [
     'properties',
@@ -26,17 +21,26 @@ _modules = [
 
     'lights',
     'renderables',
-
+    'mesh_data',
+    'vao',
+    
     # TODO: Hot reloading of subfolder modules somehow? 
     'shaders',
 ]
 
-import bpy
-
-__import__(name=__name__, fromlist=_modules)
+# support reloading sub-modules
+# TODO: This works - but maybe something more explicit and direct would be better?
+# e.g. https://github.com/blender/blender-addons/blob/master/magic_uv/__init__.py 
 _namespace = globals()
-_modules_loaded = [_namespace[name] for name in _modules]
-del _namespace
+if 'bpy' in locals():
+    from importlib import reload
+    _modules_loaded = [reload(_namespace[val]) for val in _modules]
+else:
+    import bpy
+    __import__(name=__name__, fromlist=_modules)
+    _modules_loaded = [_namespace[name] for name in _modules]
+
+import bpy
 
 def register():
     from bpy.utils import register_class
