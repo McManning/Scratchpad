@@ -4,6 +4,7 @@ from bgl import *
 # from mathutils import Vector, Matrix, Quaternion
 
 from .lights import (
+    SceneLighting,
     MainLight,
     SpotLight,
     PointLight
@@ -12,11 +13,6 @@ from .lights import (
 from .renderables import (
     Mesh,
     Material
-)
-
-from .shaders.base import (
-    Shader,
-    LightData
 )
 
 from .shaders.fallback import FallbackShader
@@ -40,8 +36,8 @@ class FooRenderEngine(bpy.types.RenderEngine):
         Note that multiple instances can exist @ once, e.g. a viewport and final render
         """
         self.meshes = dict()
-        self.lights = LightData()
-        self.lights.main_light = MainLight()
+        self.lighting = SceneLighting()
+        self.lighting.main_light = MainLight()
 
         self.default_shader = FallbackShader()
         self.user_shader = None
@@ -64,7 +60,9 @@ class FooRenderEngine(bpy.types.RenderEngine):
     def render(self, depsgraph):
         """Handle final render (F12) and material preview window renders"""
         pass
-        # TODO: Implement. Should be the same as view_draw.
+        # TODO: Implement? Should be the same as view_draw.
+        # Not sure what the use case for this is - since this is a 
+        # realtime viewport renderer. Material preview windows maybe?
 
         # scene = depsgraph.scene
         # scale = scene.render.resolution_percentage / 100.0
@@ -101,6 +99,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
         self.updated_geometries = []
         
         # Check for any updated mesh geometry to rebuild GPU buffers
+        # Note that (de)selecting components still counts as updating geometry. 
         for update in depsgraph.updates:
             name = update.id.name
             if type(update.id) == bpy.types.Object:
@@ -120,8 +119,8 @@ class FooRenderEngine(bpy.types.RenderEngine):
             #     print('Unhandled scene object type', obj.type)
                 
         self.meshes = self.updated_meshes
-        self.lights.ambient_color = context.scene.foo.ambient_color
-        self.lights.additional_lights = self.updated_additional_lights
+        self.lighting.ambient_color = context.scene.foo.ambient_color
+        self.lighting.additional_lights = self.updated_additional_lights
     
     def update_mesh(self, obj, depsgraph):
         rebuild_geometry = obj.name in self.updated_geometries
@@ -151,22 +150,37 @@ class FooRenderEngine(bpy.types.RenderEngine):
         # TODO: AREA
         
     def update_main_light(self, obj):
-        self.lights.main_light.update(obj)
+        """Track an updated directional light in the scene
+        
+        Parameters:
+            obj (bpy.types.Object)
+        """
+        self.lighting.main_light.update(obj)
 
     def update_point_light(self, obj):
-        if obj.name not in self.lights.additional_lights:
+        """Track an updated point light in the scene
+        
+        Parameters:
+            obj (bpy.types.Object)
+        """
+        if obj.name not in self.lighting.additional_lights:
             light = PointLight()
         else:
-            light = self.lights.additional_lights[obj.name]
+            light = self.lighting.additional_lights[obj.name]
         
         light.update(obj)
         self.updated_additional_lights[obj.name] = light
     
     def update_spot_light(self, obj):
-        if obj.name not in self.lights.additional_lights:
+        """Track an updated spot light in the scene
+        
+        Parameters:
+            obj (bpy.types.Object)
+        """
+        if obj.name not in self.lighting.additional_lights:
             light = SpotLight()
         else:
-            light = self.lights.additional_lights[obj.name]
+            light = self.lighting.additional_lights[obj.name]
         
         light.update(obj)
         self.updated_additional_lights[obj.name] = light
@@ -208,9 +222,9 @@ class FooRenderEngine(bpy.types.RenderEngine):
             self.shader = self.default_shader
             return
 
-        print('--- Force reload', settings.force_reload)
-        print('--- Live reload', settings.live_reload)
-        print('--- needs recompile', needs_recompile)
+        # print('--- Force reload', settings.force_reload)
+        # print('--- Live reload', settings.live_reload)
+        # print('--- needs recompile', needs_recompile)
         
         # Trigger a recompile if we're forcing it or the files on disk
         # have been modified since the last render
@@ -266,7 +280,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
             region3d.window_matrix
         )
 
-        self.shader.set_lights(self.lights)
+        self.shader.set_lighting(self.lighting)
 
         glEnable(GL_DEPTH_TEST)
         
@@ -286,52 +300,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
         # glDisable(GL_BLEND)
 
-    def refresh_all_buffers(self):
-        """Force *all* GPU buffers to reload.
-        
-        This can trigger when shaders are recompiled
-        """
-        for mesh in self.meshes.values():
-            mesh.dirty()
-
 
 classes = (
     FooRenderEngine,
 )
-
-# # RenderEngines also need to tell UI Panels that they are compatible with.
-# # We recommend to enable all panels marked as BLENDER_RENDER, and then
-# # exclude any panels that are replaced by custom panels registered by the
-# # render engine, or that are not supported.
-# def get_panels():
-#     exclude_panels = {
-#         'VIEWLAYER_PT_filter',
-#         'VIEWLAYER_PT_layer_passes',
-    
-#         # From cycles:
-#         # https://github.com/sobotka/blender/blob/f6f4ab3ebfe4772dcc0a47a2f54121017d5181d1/intern/cycles/blender/addon/ui.py#L1341
-#         'DATA_PT_light',
-#         'DATA_PT_preview',
-#         'DATA_PT_spot',
-#     }
-
-#     panels = []
-#     for panel in bpy.types.Panel.__subclasses__():
-#         if hasattr(panel, 'COMPAT_ENGINES') and 'BLENDER_RENDER' in panel.COMPAT_ENGINES:
-#             if panel.__name__ not in exclude_panels:
-#                 panels.append(panel)
-
-#     return panels
-
-# def register():
-#     bpy.utils.register_class(FooRenderEngine)
-
-#     for panel in get_panels():
-#         panel.COMPAT_ENGINES.add(FooRenderEngine.bl_idname)
-
-# def unregister():
-#     bpy.utils.unregister_class(FooRenderEngine)
-
-#     for panel in get_panels():
-#         if FooRenderEngine.bl_idname in panel.COMPAT_ENGINES:
-#             panel.COMPAT_ENGINES.remove(FooRenderEngine.bl_idname)
