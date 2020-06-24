@@ -1,7 +1,8 @@
 
 import bpy
+from bpy.types import Operator
 
-class FooReloadSourcesOperator(bpy.types.Operator):
+class FOO_OT_reload_sources(Operator):
     """Force reload of shader source files"""
     bl_idname = 'foo.reload_sources'
     bl_label = 'Reload Shader Sources'
@@ -13,5 +14,5 @@ class FooReloadSourcesOperator(bpy.types.Operator):
         return {'FINISHED'}
 
 classes = (
-    FooReloadSourcesOperator,
+    FOO_OT_reload_sources,
 )
