@@ -227,7 +227,7 @@ class BaseShader:
         """Read settings universal to the renderer
         
         Parameters:
-            settings (FooRendererSettings): Instance to read
+            settings (ScratchpadSettings): Instance to read
         """
         pass
 

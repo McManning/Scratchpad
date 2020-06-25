@@ -16,13 +16,13 @@ from bpy.types import PropertyGroup
 from .shaders import SUPPORTED_SHADERS
 
 def force_shader_reload(self, context):
-    """Callback when any of the shader filenames change in FooRenderSettings"""
-    context.scene.foo.force_reload = True
+    """Callback when any of the shader filenames change"""
+    context.scene.scratchpad.force_reload = True
 
 # Generate a Blender enum list for available shader loaders
 LOADERS = [(s[0], s[0], s[1].__doc__, '', i) for i, s in enumerate(SUPPORTED_SHADERS)]
 
-class FooRendererSettings(PropertyGroup):
+class ScratchpadSettings(PropertyGroup):
     loader: EnumProperty(
         name='Shader Format',
         items=LOADERS,
@@ -64,17 +64,16 @@ class FooRendererSettings(PropertyGroup):
     
     @classmethod
     def register(cls):
-        bpy.types.Scene.foo = PointerProperty(
-            name="Foo Render Settings",
-            description="something about it",
+        bpy.types.Scene.scratchpad = PointerProperty(
+            name="Scratchpad Settings",
             type=cls
         )
         
     @classmethod
     def unregister(cls):
-        del bpy.types.Scene.foo
+        del bpy.types.Scene.scratchpad
 
-class FooLightSettings(PropertyGroup):
+class ScratchpadLightSettings(PropertyGroup):
     color: FloatVectorProperty(  
         name='Color',
         subtype='COLOR',
@@ -99,43 +98,43 @@ class FooLightSettings(PropertyGroup):
     
     @classmethod
     def register(cls):
-        bpy.types.Light.foo = PointerProperty(
-            name='Foo Light Settings',
+        bpy.types.Light.scratchpad = PointerProperty(
+            name='Scratchpad Light Settings',
             description='',
             type=cls
         )
     
     @classmethod
     def unregister(cls):
-        del bpy.types.Light.foo
+        del bpy.types.Light.scratchpad
 
-class BaseDynamicRendererSettings(PropertyGroup):
+class BaseDynamicRendererProperties(PropertyGroup):
     """Base class for groups registered with register_dynamic_property_group()"""
     @classmethod
     def register(cls):
-        bpy.types.Scene.foo_dynamic = PointerProperty(
-            name='Foo Dynamic Renderer Settings',
+        bpy.types.Scene.scratchpad_dynamic = PointerProperty(
+            name='Scratchpad Dynamic Renderer Properties',
             description='',
             type=cls
         )
     
     @classmethod
     def unregister(cls):
-        del bpy.types.Scene.foo_dynamic
+        del bpy.types.Scene.scratchpad_dynamic
 
-class BaseDynamicMaterialSettings(PropertyGroup):
+class BaseDynamicMaterialProperties(PropertyGroup):
     """Base class for groups registered with register_dynamic_property_group()"""
     @classmethod
     def register(cls):
-        bpy.types.Material.foo_dynamic = PointerProperty(
-            name='Foo Dynamic Material Settings',
+        bpy.types.Material.scratchpad_dynamic = PointerProperty(
+            name='Scratchpad Dynamic Material Properties',
             description='',
             type=cls
         )
     
     @classmethod
     def unregister(cls):
-        del bpy.types.Material.foo_dynamic
+        del bpy.types.Material.scratchpad_dynamic
 
 def register_dynamic_property_group(class_name: str, base: PropertyGroup, properties: list):
     """Create a named PropertyGroup from a configuration list at runtime
@@ -230,27 +229,24 @@ def register_dynamic_property_group(class_name: str, base: PropertyGroup, proper
 
         # And so on as needed.
 
-    if not hasattr(bpy, 'foo_dynamic_property_groups'):
-        bpy.foo_dynamic_property_groups = {}
+    if not hasattr(bpy, 'scratchpad_dynamic_property_groups'):
+        bpy.scratchpad_dynamic_property_groups = {}
 
     # Unregister the previous instance if reloading
-    if class_name in bpy.foo_dynamic_property_groups:
+    if class_name in bpy.scratchpad_dynamic_property_groups:
         # delattr(bpy.types.Scene, class_name)
-        bpy.utils.unregister_class(bpy.foo_dynamic_property_groups[class_name])
+        bpy.utils.unregister_class(bpy.scratchpad_dynamic_property_groups[class_name])
 
-    # Instantiate a new BaseDynamicMaterialSettings instance container.
+    # Instantiate a new BaseDynamicMaterialProperties instance container.
     # We add everything as property annotations for Blender 2.8+
-    clazz = type(class_name, (base,), { '__annotations__': attr })
-    clazz.images = images 
+    instance = type(class_name, (base,), { '__annotations__': attr })
+    instance.images = images 
 
-    print('Register dynamic', clazz)
-    bpy.utils.register_class(clazz)
-
-    # Apply to scope - no longer applicable, class has its own @register method
-    # setattr(bpy.types.Scene, name, PointerProperty(type=clazz))
+    print('Register dynamic', instance)
+    bpy.utils.register_class(instance)
 
     # track for unregister_dynamic_property_group
-    bpy.foo_dynamic_property_groups[class_name] = clazz
+    bpy.scratchpad_dynamic_property_groups[class_name] = instance
 
 def unregister_dynamic_property_group(class_name: str):     
     """"Remove a PropertyGroup previously created by register_dynamic_property_group
@@ -258,16 +254,16 @@ def unregister_dynamic_property_group(class_name: str):
     Parameters:
         class_name (str): Class name to unregister
     """
-    if hasattr(bpy, 'foo_dynamic_property_groups') and class_name in bpy.foo_dynamic_property_groups:
-        clazz = bpy.foo_dynamic_property_groups[class_name]
-        print('Unregister dynamic', clazz)
+    if hasattr(bpy, 'scratchpad_dynamic_property_groups') and class_name in bpy.scratchpad_dynamic_property_groups:
+        instance = bpy.scratchpad_dynamic_property_groups[class_name]
+        print('Unregister dynamic', instance)
 
         try:
-            bpy.utils.unregister_class(clazz)
+            bpy.utils.unregister_class(instance)
         except: 
             pass
         
-        del bpy.foo_dynamic_property_groups[class_name]
+        del bpy.scratchpad_dynamic_property_groups[class_name]
     else:
         print('Cannot find dynamic to unregister:', class_name)
 
@@ -280,6 +276,6 @@ def unregister_dynamic_property_group(class_name: str):
 #     bpy.dynamic_property_groups = {}
 
 classes = (
-    FooRendererSettings,
-    FooLightSettings,
+    ScratchpadSettings,
+    ScratchpadLightSettings,
 )

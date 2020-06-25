@@ -1,13 +1,12 @@
-# License stuff
-#
-#
 
 bl_info = {
-    'name': 'Foo Render Engine',
+    'name': 'Scratchpad',
+    'description': 'Simple realtime viewport render engine',
     'author': 'Chase McManning',
+    'version': (1, 0),
     'blender': (2, 80, 0),
-    'description': '...',
-    'doc_url': 'https://path/to/docs',
+    'wiki_url': 'https://github.com/McManning/Scratchpad/wiki',
+    'tracker_url': 'https://github.com/McManning/Scratchpad/issues',
     'category': 'Render'
 }
 
@@ -46,26 +45,23 @@ def register():
     from bpy.utils import register_class
     for mod in _modules_loaded:
         if 'classes' in dir(mod):
-            for cls in mod.classes:
-                register_class(cls)
+            for instance in mod.classes:
+                register_class(instance)
 
 def unregister():
     from bpy.utils import unregister_class
     for mod in reversed(_modules_loaded):
         if 'classes' in dir(mod):
-            for cls in reversed(mod.classes):
-                if cls.is_registered:
-                    unregister_class(cls)
+            for instance in reversed(mod.classes):
+                if instance.is_registered:
+                    unregister_class(instance)
 
     # Unregister dynamic-generated property groups 
-    if hasattr(bpy, 'foo_dynamic_property_groups'):
-        for key, value in bpy.foo_dynamic_property_groups.items():
-            # TODO: Scope. Currently assumes they all exist on Scene.
-            # TODO: SHOULD we delattr? Reloading the plugin should just
-            # replace, not destroy what was there. What about a scene reload?
-            # Does that break everything stored here? 
-            # Each PropertyGroup *does* delete the property on unregister currently.
-            # delattr(bpy.types.Material, key) 
-            bpy.utils.unregister_class(value)
-    
-    bpy.foo_dynamic_property_groups = {}
+    if hasattr(bpy, 'scratchpad_dynamic_property_groups'):
+        for key, instance in bpy.scratchpad_dynamic_property_groups.items():
+            try:
+                bpy.utils.unregister_class(instance)
+            except: 
+                pass
+            
+        bpy.scratchpad_dynamic_property_groups = {}

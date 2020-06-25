@@ -31,11 +31,16 @@ class Mesh:
     total_indices: int 
     total_vertices: int 
 
+    def __repr__(self):
+        return '<Mesh(name={})>'.format(
+            self.obj.name if self.obj else ''
+        )
+
     def __init__(self):
         self.is_backbuffer_ready = False
         self.vao = VAO()
         self.vao_backbuffer = VAO()
-    
+
     def update(self, obj):
         self.obj = obj
         self.model_matrix = obj.matrix_world
@@ -109,6 +114,8 @@ class Mesh:
         self.is_backbuffer_ready = True
 
     def draw(self, shader):
+        print('Draw', self)
+
         # Swap backbuffer with the active VAO 
         if self.is_backbuffer_ready:
             self.rebuild_on_render_v4(shader)
@@ -119,17 +126,21 @@ class Mesh:
             # frames for larger meshes IF that ends up being the solution to 
             # improve visual performance when editing large (1mil+ vert) meshes.
 
-            # print('Swap backbuffer')
+            print('Swap backbuffer')
             vao = self.vao 
             self.vao = self.vao_backbuffer
             self.vao_backbuffer = vao
             self.is_backbuffer_ready = False
-            # print('Done with swap')
+            print('Done with swap')
 
+        print('Bind VAO')
         self.vao.bind(shader.program)
-        
+        print('Draw elements', self.vao.total_indices)
+
         # Texture stuff go here.
+
         glDrawElements(GL_TRIANGLES, self.vao.total_indices, GL_UNSIGNED_INT, 0)
         
+        print('Unbind?')
         self.vao.unbind()
-    
+        print('Done')

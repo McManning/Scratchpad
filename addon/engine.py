@@ -21,13 +21,13 @@ from .shaders import SUPPORTED_SHADERS
 from .properties import (
     register_dynamic_property_group, 
     unregister_dynamic_property_group,
-    BaseDynamicMaterialSettings, 
-    BaseDynamicRendererSettings
+    BaseDynamicMaterialProperties, 
+    BaseDynamicRendererProperties
 )
 
-class FooRenderEngine(bpy.types.RenderEngine):
-    bl_idname = "foo_renderer"
-    bl_label = "Foo Renderer"
+class ScratchpadRenderEngine(bpy.types.RenderEngine):
+    bl_idname = "scratchpad_renderer"
+    bl_label = "Scratchpad"
     bl_use_preview = True
 
     def __init__(self):
@@ -119,7 +119,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
             #     print('Unhandled scene object type', obj.type)
                 
         self.meshes = self.updated_meshes
-        self.lighting.ambient_color = context.scene.foo.ambient_color
+        self.lighting.ambient_color = context.scene.scratchpad.ambient_color
         self.lighting.additional_lights = self.updated_additional_lights
     
     def update_mesh(self, obj, depsgraph):
@@ -192,7 +192,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
     
     def update_shaders(self, context):
         """Send updated user data to shaders and check if we should hot reload sources"""
-        settings = context.scene.foo
+        settings = context.scene.scratchpad
 
         # Check if the selected shader has changed from what's  
         # currently loaded and if so, instantiate a new one
@@ -205,20 +205,20 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
                 print('Swap dynamic properties')
                 # On shader change, update the dynamic renderer properties to match
-                unregister_dynamic_property_group('FooRendererDynamicProperties')
+                unregister_dynamic_property_group('ScratchpadDynamicRendererProperties')
                 props = self.user_shader.get_renderer_properties()
                 if props:
                     register_dynamic_property_group(
-                        'FooRendererDynamicProperties', 
-                        BaseDynamicRendererSettings,
+                        'ScratchpadDynamicRendererProperties', 
+                        BaseDynamicRendererProperties,
                         props.definitions
                     )
 
         # Check for readable source files and changes
         try:
             # Push current dynamic properties from the UI to the shader
-            if hasattr(context.scene, 'foo_dynamic'):
-                props = context.scene.foo_dynamic
+            if hasattr(context.scene, 'scratchpad_dynamic'):
+                props = context.scene.scratchpad_dynamic
                 self.user_shader.update_renderer_properties(props)
                 
             needs_recompile = self.user_shader.needs_recompile()
@@ -241,12 +241,12 @@ class FooRenderEngine(bpy.types.RenderEngine):
                 self.shader = self.user_shader
                 
                 # Load new dynamic material properties into context
-                unregister_dynamic_property_group('FooMaterialDynamicProperties')
+                unregister_dynamic_property_group('ScratchpadMaterialProperties')
                 props = self.user_shader.get_material_properties()
                 if props:
                     register_dynamic_property_group(
-                        'FooMaterialDynamicProperties', 
-                        BaseDynamicMaterialSettings,
+                        'ScratchpadMaterialProperties', 
+                        BaseDynamicMaterialProperties,
                         props.definitions
                     )
                 
@@ -263,7 +263,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
         scene = depsgraph.scene
         region = context.region
         region3d = context.region_data
-        settings = scene.foo
+        settings = scene.scratchpad
         
         # self.check_shader_reload(context)
         
@@ -292,7 +292,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
         # glEnable(GL_BLEND)
         # glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
 
-        clear_color = scene.foo.clear_color
+        clear_color = scene.scratchpad.clear_color
         glClearColor(clear_color[0], clear_color[1], clear_color[2], 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         
@@ -307,5 +307,5 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
 
 classes = (
-    FooRenderEngine,
+    ScratchpadRenderEngine,
 )

@@ -1,6 +1,4 @@
-# Foo Render Engine (Final Name Pending)
-
-Pure Python render engine for Blender 2.8+. 
+# Scratchpad Render Engine
 
 This addon allows a developer to write realtime viewport shaders as GLSL code with as much access to the render pipeline as possible.
 

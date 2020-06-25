@@ -19,7 +19,7 @@ class MainLight:
         self.color = (1, 1, 1, 1)
 
     def update(self, obj):
-        settings = obj.data.foo
+        settings = obj.data.scratchpad
         
         # Object data
         direction = obj.matrix_world.to_quaternion() @ Vector((0, 0, 1))
@@ -37,7 +37,7 @@ class SpotLight:
         self.attenuation = (0, 1, 0, 1)
 
     def update(self, obj):
-        settings = obj.data.foo
+        settings = obj.data.scratchpad
         
         # Object data
         position = obj.matrix_world.to_translation()
@@ -81,7 +81,7 @@ class PointLight:
         self.attenuation = (0, 1, 0, 1)
 
     def update(self, obj):
-        settings = obj.data.foo
+        settings = obj.data.scratchpad
         
         # Object data
         position = obj.matrix_world.to_translation()

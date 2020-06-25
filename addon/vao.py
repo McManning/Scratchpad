@@ -237,8 +237,10 @@ class VAO:
         self.unbind()
 
     def bind(self, program):
+        print('Bind VAO', self.vao)
         glBindVertexArray(self.vao)
         
     def unbind(self):
+        print('Unbind VAO', self.vao)
         glBindVertexArray(0)
 

@@ -6,50 +6,50 @@ from bgl import *
 
 from bpy.types import Panel
 
-from .engine import FooRenderEngine
+from .engine import ScratchpadRenderEngine
 
 class BasePanel(Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'render'
-    COMPAT_ENGINES = {FooRenderEngine.bl_idname}
+    COMPAT_ENGINES = {ScratchpadRenderEngine.bl_idname}
 
     @classmethod
     def poll(cls, context):
         return context.engine in cls.COMPAT_ENGINES
 
-class FOO_RENDER_PT_settings(BasePanel):
+class SCRATCHPAD_RENDER_PT_settings(BasePanel):
     """Parent panel for renderer settings"""
-    bl_label = 'Foo Renderer Settings'
+    bl_label = 'Scratchpad Settings'
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
         
-        settings = context.scene.foo
+        settings = context.scene.scratchpad
         # No controls at top level.
         
-class FOO_RENDER_PT_settings_viewport(BasePanel):
+class SCRATCHPAD_RENDER_PT_settings_viewport(BasePanel):
     """Global viewport configurations"""
     bl_label = 'Viewport'
-    bl_parent_id = 'FOO_RENDER_PT_settings'
+    bl_parent_id = 'SCRATCHPAD_RENDER_PT_settings'
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
         
-        settings = context.scene.foo
+        settings = context.scene.scratchpad
 
         col = layout.column(align=True)
         col.prop(settings, 'clear_color')
         col.prop(settings, 'ambient_color')
 
-class FOO_RENDER_PT_settings_shader(BasePanel):
+class SCRATCHPAD_RENDER_PT_settings_shader(BasePanel):
     """Shader configurations and reload settings"""
     bl_label = 'Shader'
-    bl_parent_id = 'FOO_RENDER_PT_settings'
+    bl_parent_id = 'SCRATCHPAD_RENDER_PT_settings'
 
     def draw_image_template(self, props, name, col):
         layout = self.layout
@@ -88,7 +88,7 @@ class FOO_RENDER_PT_settings_shader(BasePanel):
             # # Texture source input with a button to 
             # # quickly create and assign a new texture
             # row.prop(props, name)
-            # row.operator('foo.add_texture', text='New', icon='ADD')
+            # row.operator('scratchpad.add_texture', text='New', icon='ADD')
 
         # tex = props.tex
         # if tex:
@@ -126,7 +126,7 @@ class FOO_RENDER_PT_settings_shader(BasePanel):
         layout.use_property_split = True
         layout.use_property_decorate = False
         
-        settings = context.scene.foo
+        settings = context.scene.scratchpad
 
         # self.draw_image_test(context)
 
@@ -137,11 +137,11 @@ class FOO_RENDER_PT_settings_shader(BasePanel):
         col.prop(settings, 'loader')
 
         # Render dynamic properties if provided by the current shader
-        if hasattr(context.scene, 'foo_dynamic'):
+        if hasattr(context.scene, 'scratchpad_dynamic'):
             layout.separator()
             col = layout.column(align=True)
 
-            props = context.scene.foo_dynamic
+            props = context.scene.scratchpad_dynamic
             # Annotations are used here because this is how we added *Property instances
             # TODO: Support grouping in some way 
             for name in props.__annotations__.keys():
@@ -155,7 +155,7 @@ class FOO_RENDER_PT_settings_shader(BasePanel):
         col = layout.column(align=True)
         row = col.row(align=True)
         row.prop(settings, "live_reload", text="Live Reload")
-        row.operator("foo.reload_sources", text="Reload")
+        row.operator("scratchpad.reload_sources", text="Reload")
         
         # col = layout.column(align=True)
         # col.alignment = 'RIGHT'
@@ -171,7 +171,7 @@ class FOO_RENDER_PT_settings_shader(BasePanel):
             for line in lines:
                 col.label(text=line)
 
-class FOO_LIGHT_PT_light(BasePanel):
+class SCRATCHPAD_LIGHT_PT_light(BasePanel):
     """Custom per-light settings editor for this render engine"""
     bl_label = 'Light'
     bl_context = 'data'
@@ -184,7 +184,7 @@ class FOO_LIGHT_PT_light(BasePanel):
         layout = self.layout
         light = context.light
         
-        settings = context.light.foo
+        settings = context.light.scratchpad
         
         if self.bl_space_type == 'PROPERTIES':
             layout.row().prop(light, 'type', expand=True)
@@ -204,7 +204,7 @@ class FOO_LIGHT_PT_light(BasePanel):
             col.prop(light, 'spot_size')
             col.prop(light, 'spot_blend')
             
-class FOO_PT_context_material(BasePanel):
+class SCRATCHPAD_PT_context_material(BasePanel):
     """This is based on CYCLES_PT_context_material to provide the same material selector menu"""
     bl_label = ''
     bl_context = 'material'
@@ -267,7 +267,7 @@ class FOO_PT_context_material(BasePanel):
             split.template_ID(space, "pin_id")
             split.separator()
 
-class FOO_MATERIAL_PT_settings(BasePanel):
+class SCRATCHPAD_MATERIAL_PT_settings(BasePanel):
     bl_label = 'Settings'
     bl_context = 'material'
     
@@ -287,10 +287,10 @@ class FOO_MATERIAL_PT_settings(BasePanel):
         layout.prop(mat, "diffuse_color")
 
 
-class FOO_MATERIAL_PT_settings_dynamic(BasePanel):
+class SCRATCHPAD_MATERIAL_PT_settings_dynamic(BasePanel):
     """Dynamic per-shader properties added to a material"""
     bl_label = 'Shader Properties'
-    bl_parent_id = 'FOO_MATERIAL_PT_settings'
+    bl_parent_id = 'SCRATCHPAD_MATERIAL_PT_settings'
 
     def draw(self, context):
         mat = context.material
@@ -298,16 +298,16 @@ class FOO_MATERIAL_PT_settings_dynamic(BasePanel):
         layout.use_property_split = True
         layout.use_property_decorate = False
         
-        settings = context.scene.foo
+        settings = context.scene.scratchpad
         
         col = layout.column()
         
         if settings.last_shader_error:
             col.label(text='Resolve shader errors to see additional properties')
-        elif not hasattr(mat, 'foo_dynamic'):
+        elif not hasattr(mat, 'scratchpad_dynamic'):
             col.label(text='No additional properties for the current shader')
         else:
-            props = mat.foo_dynamic
+            props = mat.scratchpad_dynamic
             # Annotations are used here because this is how we added *Property instances
             # TODO: Support grouping in some way 
             for name in props.__annotations__.keys():
@@ -315,15 +315,15 @@ class FOO_MATERIAL_PT_settings_dynamic(BasePanel):
 
 classes = (
     # Renderer panels
-    FOO_RENDER_PT_settings,
-    FOO_RENDER_PT_settings_viewport,
-    FOO_RENDER_PT_settings_shader,
+    SCRATCHPAD_RENDER_PT_settings,
+    SCRATCHPAD_RENDER_PT_settings_viewport,
+    SCRATCHPAD_RENDER_PT_settings_shader,
 
     # Light panels
-    FOO_LIGHT_PT_light,
+    SCRATCHPAD_LIGHT_PT_light,
 
     # Material panels
-    FOO_PT_context_material,
-    FOO_MATERIAL_PT_settings,
-    FOO_MATERIAL_PT_settings_dynamic
+    SCRATCHPAD_PT_context_material,
+    SCRATCHPAD_MATERIAL_PT_settings,
+    SCRATCHPAD_MATERIAL_PT_settings_dynamic
 )
