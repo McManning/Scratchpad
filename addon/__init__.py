@@ -5,7 +5,7 @@ bl_info = {
     'author': 'Chase McManning',
     'version': (1, 0),
     'blender': (2, 80, 0),
-    'wiki_url': 'https://github.com/McManning/Scratchpad/wiki',
+    'doc_url': 'https://github.com/McManning/Scratchpad/wiki',
     'tracker_url': 'https://github.com/McManning/Scratchpad/issues',
     'category': 'Render'
 }
