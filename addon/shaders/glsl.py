@@ -37,35 +37,35 @@ class GLSLShader(BaseShader):
     def get_renderer_properties(self):
         return self.properties
 
-    def update_renderer_properties(self, settings):
-        self.properties.from_property_group(settings)
+    def update_renderer_properties(self, props):
+        self.properties.from_property_group(props)
         
-        if not os.path.isfile(settings.vert_filename):
+        if not os.path.isfile(props.vert_filename):
             raise FileNotFoundError('Missing required vertex shader')
             
-        if not os.path.isfile(settings.frag_filename):
+        if not os.path.isfile(props.frag_filename):
             raise FileNotFoundError('Missing required fragment shader')
         
         self.stages = { 
-            'vs': settings.vert_filename,
-            'tcs': settings.tesc_filename, 
-            'tes': settings.tese_filename,
-            'gs': settings.geom_filename,
-            'fs': settings.frag_filename
+            'vs': props.vert_filename,
+            'tcs': props.tesc_filename, 
+            'tes': props.tese_filename,
+            'gs': props.geom_filename,
+            'fs': props.frag_filename
         }
         
         self.monitored_files = [f for f in self.stages.values() if f]
 
         # TODO: More dynamic (iterate properties, track each one that's an image)
-        self.diffuse = settings.diffuse
+        self.diffuse = props.diffuse
 
     def get_material_properties(self):
         return self.material_properties
 
-    def update_material_properties(self, settings):
-        self.material_properties.from_property_group(settings)
+    def update_material_properties(self, props):
+        self.material_properties.from_property_group(props)
         
-    def recompile(self):
+    def compile(self):
         sources = {}
 
         # Mapping between a shader stage and array of include files.
@@ -89,6 +89,10 @@ class GLSLShader(BaseShader):
 
             sources[stage] = source
 
+        # We update mtimes first so that if a compilation fails
+        # we can still detect file changes
+        self.update_mtimes()
+
         self.compile_from_strings(
             sources['vs'], 
             sources['fs'], 
@@ -96,8 +100,6 @@ class GLSLShader(BaseShader):
             sources['tes'], 
             sources['gs']
         )
-
-        self.update_mtimes()
 
     def bind_textures(self):
         # TODO: WIP
@@ -110,7 +112,7 @@ class GLSLShader(BaseShader):
     def bind(self):
         super(GLSLShader, self).bind()
 
-        # TODO: Doesn't work, number too big. Change this up
+        # TODO: Doesn't work. Change this up
         # self.set_float("_Time", time())
         self.bind_textures()
 
