@@ -6,13 +6,18 @@ from .debug import init_log, log, op_log
 from .vao import (
     VAO,
     VertexBuffer,
-) 
+)
 
-class Material:
-    def bind(self):
+class ScratchpadMaterial:
+    def __init__(self):
+        self.shader = None # BaseShader impl
+        self.renderables = {} # Set of Renderables with this material
+
+class Renderable:
+    def draw(self, shader):
         pass
 
-class Mesh:
+class Mesh(Renderable):
     """Mesh data stored on the GPU for rendering.
     
     This manages the copy operations of Blender data to GPU buffers as 
@@ -32,8 +37,9 @@ class Mesh:
     total_vertices: int 
 
     def __repr__(self):
-        return '<Mesh(name={})>'.format(
-            self.obj.name if self.obj else ''
+        return '<Mesh(name={}) at {}>'.format(
+            self.obj.name if self.obj else '',
+            id(self)
         )
 
     def __init__(self):

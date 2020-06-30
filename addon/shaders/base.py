@@ -69,10 +69,10 @@ def compile_glsl(src: str, stage_flag: int) -> int:
         return shader
 
     # If not okay, read the error from GL logs
-    bufferSize = 1024
+    buffer_size = 1024
     length = Buffer(GL_INT, 1)
-    infoLog = Buffer(GL_BYTE, [bufferSize])
-    glGetShaderInfoLog(shader, bufferSize, length, infoLog)
+    info_log = Buffer(GL_BYTE, [buffer_size])
+    glGetShaderInfoLog(shader, buffer_size, length, info_log)
 
     if stage_flag == GL_VERTEX_SHADER:
         stage = 'Vertex'
@@ -85,8 +85,10 @@ def compile_glsl(src: str, stage_flag: int) -> int:
     elif stage_flag == GL_GEOMETRY_SHADER:
         stage = 'Geometry'
     
+    print(info_log)
+
     # Reconstruct byte data into a string
-    err = ''.join(chr(infoLog[i]) for i in range(length[0]))
+    err = ''.join(chr(info_log[i]) for i in range(length[0]))
     raise CompileError(stage + ' Shader Error:\n' + err)
 
 
@@ -98,12 +100,17 @@ class BaseShader:
     """
     def __init__(self):
         self.program = None
+        self.error = None
         self.prev_mtimes = []
         self.monitored_files = []
 
+    @property
+    def is_compiled(self) -> bool:
+        return self.program is not None and glIsProgram(self.program)
+
     def needs_recompile(self) -> bool:
         """Does this shader need to be recompiled from updated settings"""
-        return self.mtimes_changed()
+        return not self.is_compiled or self.mtimes_changed()
 
     def update_mtimes(self):
         self.prev_mtimes = self.mtimes()
@@ -114,9 +121,12 @@ class BaseShader:
 
     def mtimes_changed(self) -> bool:
         """Check if the file update time has changed in any of the source files"""
+        print('Mtimes', self.prev_mtimes, self.mtimes())
         return self.prev_mtimes != self.mtimes()
 
     def compile_from_strings(self, vs: str, fs: str, tcs: str = None, tes: str = None, gs: str = None):
+        self.program = None 
+
         vs_compiled = compile_glsl(vs, GL_VERTEX_SHADER)
         fs_compiled = compile_glsl(fs, GL_FRAGMENT_SHADER)
         tcs_compiled = compile_glsl(gs, GL_TESS_CONTROL_SHADER) if tcs else None
@@ -209,6 +219,12 @@ class BaseShader:
         glUniform4f(location, value[0], value[1], value[2], value[3])
         
     def bind_texture(self, idx: int, uniform: str, image):
+        """
+        Parameters:
+            idx (int)
+            uniform (str)
+            image (bpy.types.Image)
+        """
         location = glGetUniformLocation(self.program, uniform)
         if location < 0: return
 
@@ -223,14 +239,6 @@ class BaseShader:
 
     # Core methods to be implemented by different shader formats
 
-    def update_settings(self, settings):
-        """Read settings universal to the renderer
-        
-        Parameters:
-            settings (ScratchpadSettings): Instance to read
-        """
-        pass
-
     def get_renderer_properties(self):
         """Retrieve a ShaderProperties for dynamic renderer properties
 
@@ -239,12 +247,15 @@ class BaseShader:
         """
         return None
 
-    def update_renderer_properties(self, settings):
+    def update_renderer_properties(self, props):
         """Update ShaderProperties from the PropertyGroup
         
         Parameters:
-            settings (PropertyGroup): Instance to read
+            props (ScratchpadMaterialProperties: Instance to read
         """
+        # TODO: Rename. These are now properties defined on 
+        # the Material - as ScratchpadMaterialProperties stored
+        # on bpy.types.Material.scratchpad
         pass
 
     def get_material_properties(self):
@@ -255,24 +266,35 @@ class BaseShader:
         """
         return None
 
-    def update_material_properties(self, settings):
+    def update_material_properties(self, props):
         """Update ShaderProperties from the PropertyGroup
 
         Parameters:
-            settings (PropertyGroup): Instance to read
+            props (BaseDynamicMaterialProperties): Instance to read
         """
+        # TODO: Rename. These are dynamic properties stored
+        # on bpy.types.Material.scratchpad_dynamic
         pass
 
-    def recompile(self):
-        """Recompile the shader from sources"""
+    def compile(self):
+        """Compile the shader from sources"""
         raise NotImplementedError('Must be implemented by a concrete class')
 
     def set_camera_matrices(self, view_matrix, projection_matrix):
-        """Set per-camera matrices"""
+        """Set per-camera matrices
+        
+        Parameters:
+            view_matrix (mathutils.Quaternion)
+            projection_matrix (mathutils.Quaternion)
+        """
         raise NotImplementedError('Must be implemented by a concrete class')
 
     def set_object_matrices(self, model_matrix):
-        """Set per-object matrices"""
+        """Set per-object matrices
+        
+        Parameters:
+            model_matrix (mathutils.Quaternion)
+        """
         raise NotImplementedError('Must be implemented by a concrete class')
         
     def set_lighting(self, lighting):

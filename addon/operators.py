@@ -8,6 +8,8 @@ class SCRATCHPAD_OT_reload_sources(Operator):
     bl_label = 'Reload Shader Sources'
 
     def invoke(self, context, event):
+        # TODO: Refactor to trigger a reload for ALL materials
+        # TODO:MIGRATE
         context.scene.scratchpad.force_reload = True
         
         return {'FINISHED'}

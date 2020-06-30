@@ -42,7 +42,7 @@ class OGSFXShader(BaseShader):
         self.material_properties.from_property_group(settings)
         # TODO: Texture reloading or something? Here or in the ShaderProperties?
         
-    def recompile(self):
+    def compile(self):
         # For now, uses fallback
         self.compile_from_strings(VS_FALLBACK, FS_FALLBACK)
         self.update_mtimes()

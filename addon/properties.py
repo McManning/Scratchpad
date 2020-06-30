@@ -1,4 +1,5 @@
 
+import uuid
 import bpy
 from bpy.props import (
     BoolProperty,
@@ -22,7 +23,41 @@ def force_shader_reload(self, context):
 # Generate a Blender enum list for available shader loaders
 LOADERS = [(s[0], s[0], s[1].__doc__, '', i) for i, s in enumerate(SUPPORTED_SHADERS)]
 
-class ScratchpadSettings(PropertyGroup):
+class ScratchpadProperties(PropertyGroup):
+    clear_color: FloatVectorProperty(  
+        name='Clear Color',
+        subtype='COLOR',
+        default=(0.15, 0.15, 0.15),
+        min=0.0, max=1.0,
+        description='color picker'
+    )
+    
+    @classmethod
+    def register(cls):
+        bpy.types.Scene.scratchpad = PointerProperty(
+            name="Scratchpad Settings",
+            type=cls
+        )
+        
+    @classmethod
+    def unregister(cls):
+        del bpy.types.Scene.scratchpad
+
+class ScratchpadMaterialProperties(PropertyGroup):
+    dynamic_shader_property_group_key: StringProperty(
+        default=''
+    )
+
+    dynamic_material_property_group_key: StringProperty(
+        default=''
+    )
+
+    priority: IntProperty(
+        name='Priority',
+        default=1000,
+        description='Render order priority. Lowest are drawn first',
+    )
+
     loader: EnumProperty(
         name='Shader Format',
         items=LOADERS,
@@ -36,14 +71,6 @@ class ScratchpadSettings(PropertyGroup):
         name='Live Reload',
         description='Reload source files on change',
         default=True
-    )
-    
-    clear_color: FloatVectorProperty(  
-        name='Clear Color',
-        subtype='COLOR',
-        default=(0.15, 0.15, 0.15),
-        min=0.0, max=1.0,
-        description='color picker'
     )
     
     ambient_color: FloatVectorProperty(
@@ -64,16 +91,16 @@ class ScratchpadSettings(PropertyGroup):
     
     @classmethod
     def register(cls):
-        bpy.types.Scene.scratchpad = PointerProperty(
+        bpy.types.Material.scratchpad = PointerProperty(
             name="Scratchpad Settings",
             type=cls
         )
         
     @classmethod
     def unregister(cls):
-        del bpy.types.Scene.scratchpad
+        del bpy.types.Material.scratchpad
 
-class ScratchpadLightSettings(PropertyGroup):
+class ScratchpadLightProperties(PropertyGroup):
     color: FloatVectorProperty(  
         name='Color',
         subtype='COLOR',
@@ -108,35 +135,37 @@ class ScratchpadLightSettings(PropertyGroup):
     def unregister(cls):
         del bpy.types.Light.scratchpad
 
-class BaseDynamicRendererProperties(PropertyGroup):
-    """Base class for groups registered with register_dynamic_property_group()"""
-    @classmethod
-    def register(cls):
-        bpy.types.Scene.scratchpad_dynamic = PointerProperty(
-            name='Scratchpad Dynamic Renderer Properties',
-            description='',
-            type=cls
-        )
+# class BaseDynamicShaderProperties(PropertyGroup):
+#     """Base class for groups registered with register_dynamic_property_group()"""
+#     @classmethod
+#     def register(cls):
+#         bpy.types.Material.scratchpad_shader = PointerProperty(
+#             name='Scratchpad Dynamic Shader Properties',
+#             description='',
+#             type=cls
+#         )
     
-    @classmethod
-    def unregister(cls):
-        del bpy.types.Scene.scratchpad_dynamic
+#     @classmethod
+#     def unregister(cls):
+#         del bpy.types.Material.scratchpad_shader
 
 class BaseDynamicMaterialProperties(PropertyGroup):
     """Base class for groups registered with register_dynamic_property_group()"""
     @classmethod
     def register(cls):
-        bpy.types.Material.scratchpad_dynamic = PointerProperty(
+        setattr(bpy.types.Material, cls.property_key, PointerProperty(
             name='Scratchpad Dynamic Material Properties',
             description='',
             type=cls
-        )
+        ))
     
     @classmethod
     def unregister(cls):
-        del bpy.types.Material.scratchpad_dynamic
+        # del bpy.types.Material[cls.property_key]
+        delattr(bpy.types.Material, cls.property_key)
 
-def register_dynamic_property_group(class_name: str, base: PropertyGroup, properties: list):
+
+def register_dynamic_property_group(class_name: str, base: PropertyGroup, properties: list, property_key: str):
     """Create a named PropertyGroup from a configuration list at runtime
 
     Parameters:
@@ -241,6 +270,7 @@ def register_dynamic_property_group(class_name: str, base: PropertyGroup, proper
     # We add everything as property annotations for Blender 2.8+
     instance = type(class_name, (base,), { '__annotations__': attr })
     instance.images = images 
+    instance.property_key = property_key
 
     print('Register dynamic', instance)
     bpy.utils.register_class(instance)
@@ -276,6 +306,7 @@ def unregister_dynamic_property_group(class_name: str):
 #     bpy.dynamic_property_groups = {}
 
 classes = (
-    ScratchpadSettings,
-    ScratchpadLightSettings,
+    ScratchpadProperties,
+    ScratchpadMaterialProperties,
+    ScratchpadLightProperties,
 )

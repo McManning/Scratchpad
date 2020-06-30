@@ -44,12 +44,32 @@ class SCRATCHPAD_RENDER_PT_settings_viewport(BasePanel):
 
         col = layout.column(align=True)
         col.prop(settings, 'clear_color')
-        col.prop(settings, 'ambient_color')
+        # col.prop(settings, 'ambient_color') TODO:MIGRATE
 
-class SCRATCHPAD_RENDER_PT_settings_shader(BasePanel):
+class SCRATCHPAD_MATERIAL_PT_settings(BasePanel):
+    bl_label = 'Scratchpad Settings'
+    bl_context = 'material'
+    
+    @classmethod 
+    def poll(cls, context):   
+        return context.material and BasePanel.poll(context)
+
+    def draw(self, context):
+        mat = context.material 
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        # col = layout.column()
+        # col.label(text='TODO: Anything common?')
+        
+        layout.prop(mat, "diffuse_color")
+
+
+class SCRATCHPAD_MATERIAL_PT_settings_shader(BasePanel):
     """Shader configurations and reload settings"""
     bl_label = 'Shader'
-    bl_parent_id = 'SCRATCHPAD_RENDER_PT_settings'
+    bl_parent_id = 'SCRATCHPAD_MATERIAL_PT_settings'
 
     def draw_image_template(self, props, name, col):
         layout = self.layout
@@ -122,11 +142,12 @@ class SCRATCHPAD_RENDER_PT_settings_shader(BasePanel):
         # layout.template_image(tex, "image", tex.image_user)
 
     def draw(self, context):
+        mat = context.material 
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
         
-        settings = context.scene.scratchpad
+        settings = mat.scratchpad
 
         # self.draw_image_test(context)
 
@@ -137,11 +158,12 @@ class SCRATCHPAD_RENDER_PT_settings_shader(BasePanel):
         col.prop(settings, 'loader')
 
         # Render dynamic properties if provided by the current shader
-        if hasattr(context.scene, 'scratchpad_dynamic'):
+        key = settings.dynamic_shader_property_group_key
+        if hasattr(mat, key):
             layout.separator()
             col = layout.column(align=True)
 
-            props = context.scene.scratchpad_dynamic
+            props = getattr(mat, key)
             # Annotations are used here because this is how we added *Property instances
             # TODO: Support grouping in some way 
             for name in props.__annotations__.keys():
@@ -267,26 +289,6 @@ class SCRATCHPAD_PT_context_material(BasePanel):
             split.template_ID(space, "pin_id")
             split.separator()
 
-class SCRATCHPAD_MATERIAL_PT_settings(BasePanel):
-    bl_label = 'Settings'
-    bl_context = 'material'
-    
-    @classmethod 
-    def poll(cls, context):   
-        return context.material and BasePanel.poll(context)
-
-    def draw(self, context):
-        mat = context.material 
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        # col = layout.column()
-        # col.label(text='TODO: Anything common?')
-        
-        layout.prop(mat, "diffuse_color")
-
-
 class SCRATCHPAD_MATERIAL_PT_settings_dynamic(BasePanel):
     """Dynamic per-shader properties added to a material"""
     bl_label = 'Shader Properties'
@@ -298,7 +300,7 @@ class SCRATCHPAD_MATERIAL_PT_settings_dynamic(BasePanel):
         layout.use_property_split = True
         layout.use_property_decorate = False
         
-        settings = context.scene.scratchpad
+        settings = mat.scratchpad
         
         col = layout.column()
         
@@ -307,17 +309,23 @@ class SCRATCHPAD_MATERIAL_PT_settings_dynamic(BasePanel):
         elif not hasattr(mat, 'scratchpad_dynamic'):
             col.label(text='No additional properties for the current shader')
         else:
-            props = mat.scratchpad_dynamic
-            # Annotations are used here because this is how we added *Property instances
-            # TODO: Support grouping in some way 
-            for name in props.__annotations__.keys():
-                col.prop(props, name)
+            # Render dynamic properties if provided by the current shader
+            key = settings.dynamic_material_property_group_key
+            if hasattr(mat, key):
+                layout.separator()
+                col = layout.column(align=True)
+
+                props = getattr(mat, key)
+                    
+                # Annotations are used here because this is how we added *Property instances
+                # TODO: Support grouping in some way 
+                for name in props.__annotations__.keys():
+                    col.prop(props, name)
 
 classes = (
     # Renderer panels
     SCRATCHPAD_RENDER_PT_settings,
     SCRATCHPAD_RENDER_PT_settings_viewport,
-    SCRATCHPAD_RENDER_PT_settings_shader,
 
     # Light panels
     SCRATCHPAD_LIGHT_PT_light,
@@ -325,5 +333,6 @@ classes = (
     # Material panels
     SCRATCHPAD_PT_context_material,
     SCRATCHPAD_MATERIAL_PT_settings,
+    SCRATCHPAD_MATERIAL_PT_settings_shader,
     SCRATCHPAD_MATERIAL_PT_settings_dynamic
 )

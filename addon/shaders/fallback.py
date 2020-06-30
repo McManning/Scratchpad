@@ -1,7 +1,6 @@
 
 from .base import BaseShader
 
-# Fallback shaders if custom shader compilation fails
 VS_FALLBACK = '''
 #version 330 core
 
@@ -52,13 +51,13 @@ void main()
     vec3 highlight = vec3(0.98, 0.95, 0.92);
     
     FragColor = vec4(mix(outer, mix(inner, highlight, ndl * 0.25), ndl * 0.75), 1);
+    // FragColor = vec4(1, 0, 1, 1);
 }
 '''
 
 class FallbackShader(BaseShader):
-    """Built-in default shader"""
-    def recompile(self):
-        self.prev_mtimes = []
+    """Built-in default shader as a "safe" fallback in case of failures"""
+    def compile(self):
         self.compile_from_strings(VS_FALLBACK, FS_FALLBACK)
 
     def set_camera_matrices(self, view_matrix, projection_matrix):
