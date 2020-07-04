@@ -7,17 +7,19 @@ from bgl import *
 from bpy.types import Panel
 
 from .engine import ScratchpadRenderEngine
+from ..lib.registry import autoregister
 
 class BasePanel(Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'render'
-    COMPAT_ENGINES = {ScratchpadRenderEngine.bl_idname}
+    COMPAT_ENGINES = 'scratchpad_renderer'
 
     @classmethod
     def poll(cls, context):
         return context.engine in cls.COMPAT_ENGINES
 
+@autoregister
 class SCRATCHPAD_RENDER_PT_settings(BasePanel):
     """Parent panel for renderer settings"""
     bl_label = 'Scratchpad Settings'
@@ -30,6 +32,7 @@ class SCRATCHPAD_RENDER_PT_settings(BasePanel):
         settings = context.scene.scratchpad
         # No controls at top level.
         
+@autoregister
 class SCRATCHPAD_RENDER_PT_settings_viewport(BasePanel):
     """Global viewport configurations"""
     bl_label = 'Viewport'
@@ -46,6 +49,7 @@ class SCRATCHPAD_RENDER_PT_settings_viewport(BasePanel):
         col.prop(settings, 'clear_color')
         # col.prop(settings, 'ambient_color') TODO:MIGRATE
 
+@autoregister
 class SCRATCHPAD_MATERIAL_PT_settings(BasePanel):
     bl_label = 'Scratchpad Settings'
     bl_context = 'material'
@@ -65,7 +69,7 @@ class SCRATCHPAD_MATERIAL_PT_settings(BasePanel):
         
         layout.prop(mat, "diffuse_color")
 
-
+@autoregister
 class SCRATCHPAD_MATERIAL_PT_settings_shader(BasePanel):
     """Shader configurations and reload settings"""
     bl_label = 'Shader'
@@ -193,6 +197,7 @@ class SCRATCHPAD_MATERIAL_PT_settings_shader(BasePanel):
             for line in lines:
                 col.label(text=line)
 
+@autoregister
 class SCRATCHPAD_LIGHT_PT_light(BasePanel):
     """Custom per-light settings editor for this render engine"""
     bl_label = 'Light'
@@ -225,7 +230,8 @@ class SCRATCHPAD_LIGHT_PT_light(BasePanel):
         if light.type == 'SPOT':
             col.prop(light, 'spot_size')
             col.prop(light, 'spot_blend')
-            
+
+@autoregister      
 class SCRATCHPAD_PT_context_material(BasePanel):
     """This is based on CYCLES_PT_context_material to provide the same material selector menu"""
     bl_label = ''
@@ -289,6 +295,7 @@ class SCRATCHPAD_PT_context_material(BasePanel):
             split.template_ID(space, "pin_id")
             split.separator()
 
+@autoregister
 class SCRATCHPAD_MATERIAL_PT_settings_dynamic(BasePanel):
     """Dynamic per-shader properties added to a material"""
     bl_label = 'Shader Properties'

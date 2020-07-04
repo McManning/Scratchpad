@@ -27,3 +27,6 @@ def op_log(event: str):
     op_start = perf_counter()
     start = perf_counter() # reset start as well, from a previous op
     
+def debug_print(*args):
+    """Print to console while in debug mode"""
+    pprint(args)

@@ -14,7 +14,8 @@ from bpy.props import (
 
 from bpy.types import PropertyGroup
 
-from .shaders import SUPPORTED_SHADERS
+from ..shaders import SUPPORTED_SHADERS
+from ..lib.registry import autoregister
 
 def force_shader_reload(self, context):
     """Callback when any of the shader filenames change"""
@@ -23,6 +24,7 @@ def force_shader_reload(self, context):
 # Generate a Blender enum list for available shader loaders
 LOADERS = [(s[0], s[0], s[1].__doc__, '', i) for i, s in enumerate(SUPPORTED_SHADERS)]
 
+@autoregister
 class ScratchpadProperties(PropertyGroup):
     clear_color: FloatVectorProperty(  
         name='Clear Color',
@@ -43,6 +45,7 @@ class ScratchpadProperties(PropertyGroup):
     def unregister(cls):
         del bpy.types.Scene.scratchpad
 
+@autoregister
 class ScratchpadMaterialProperties(PropertyGroup):
     dynamic_shader_property_group_key: StringProperty(
         default=''
@@ -100,6 +103,7 @@ class ScratchpadMaterialProperties(PropertyGroup):
     def unregister(cls):
         del bpy.types.Material.scratchpad
 
+@autoregister
 class ScratchpadLightProperties(PropertyGroup):
     color: FloatVectorProperty(  
         name='Color',

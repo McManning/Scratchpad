@@ -4,7 +4,7 @@ from typing import List
 from ply import yacc 
 
 from .lexer import tokens
-from .shaderdata import * 
+from .shader import * 
 
 # First rule is starting symbol
 def p_shader(p):

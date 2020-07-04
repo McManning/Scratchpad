@@ -16,14 +16,16 @@ from .renderables import (
     ScratchpadMesh
 )
 
-from .shaders.fallback import FallbackShader
-from .shaders import SUPPORTED_SHADERS 
+from ..shaders.fallback import FallbackShader
+from ..shaders import SUPPORTED_SHADERS 
 
 from .properties import (
     register_dynamic_property_group, 
     unregister_dynamic_property_group,
     BaseDynamicMaterialProperties
 )
+
+from ..lib.registry import autoregister
 
 def sort_by_draw_order(arr):
     """Sort a list of Material instances by Scratchpad draw priority
@@ -40,6 +42,7 @@ def sort_by_draw_order(arr):
 def generate_unique_key() -> str:
     return 'scratchpad_dynamic_' + uuid.uuid4().hex
 
+@autoregister
 class ScratchpadRenderEngine(bpy.types.RenderEngine):
     bl_idname = "scratchpad_renderer"
     bl_label = "Scratchpad"

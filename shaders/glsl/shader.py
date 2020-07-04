@@ -2,12 +2,12 @@
 import os
 from time import time
 
-from .base import (
+from ..base import (
     BaseShader, 
     ShaderProperties,
 )
 
-from ..parsers.glsl.preprocessor import GLSLPreprocessor
+from .preprocessor import GLSLPreprocessor
 
 class GLSLShader(BaseShader):
     """Direct GLSL shader from GLSL source files"""
