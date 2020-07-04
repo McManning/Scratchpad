@@ -3,8 +3,8 @@ bl_info = {
     'name': 'Scratchpad',
     'description': 'Simple realtime viewport render engine',
     'author': 'Chase McManning',
-    'version': (1, 0),
-    'blender': (2, 80, 0),
+    'version': (0, 1, 0),
+    'blender': (2, 83, 0),
     'doc_url': 'https://github.com/McManning/Scratchpad/wiki',
     'tracker_url': 'https://github.com/McManning/Scratchpad/issues',
     'category': 'Render'

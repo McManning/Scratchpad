@@ -271,6 +271,10 @@ class MeshData:
     Obviously - use with caution.
     """
     def __init__(self, mesh):
+        """
+        Properties:
+            mesh (bpy.types.Mesh)
+        """
         # self.mesh = mesh
         self.has_custom_normals = mesh.has_custom_normals
         

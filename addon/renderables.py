@@ -18,7 +18,7 @@ class Renderable:
     def draw(self, shader):
         pass
 
-class Mesh(Renderable):
+class ScratchpadMesh(Renderable):
     """Mesh data stored on the GPU for rendering.
     
     This manages the copy operations of Blender data to GPU buffers as 
@@ -38,7 +38,7 @@ class Mesh(Renderable):
     total_vertices: int 
 
     def __repr__(self):
-        return '<Mesh(name={}) at {}>'.format(
+        return '<ScratchpadMesh(name={}) at {}>'.format(
             self.obj.name if self.obj else '',
             id(self)
         )
@@ -76,19 +76,71 @@ class Mesh(Renderable):
         
         # op_log('Total setup time')
 
+        # this is the same as self.obj ?
         self.eval_obj = eval_obj 
         # self.eval_mesh = mesh 
         self.is_backbuffer_ready = True
 
-    def rebuild_on_render_v4(self, shader):
-        """Fill the VAO backbuffer with new mesh data 
+    def rebuild_on_render(self, shader):
+        """Fill the VAO with new mesh data.
+
+        This "safe" version uses foreach_get() operations to fetch data.
 
         Parameters:
             shader (BaseShader): Shader program that houses the VAO target
         """
-        init_log('Rebuild on Render v4: {}'.format(self))
+        init_log('Rebuild on Render: {}'.format(self))
         
-        vao = self.vao_backbuffer
+        vao = self.vao
+        
+        mesh = self.eval_obj.to_mesh()
+        log('to_mesh() from {}'.format(id(self.eval_obj)))
+
+        mesh.calc_loop_triangles()
+        log('calc_loop_triangles()')
+
+        vertices_len = len(mesh.vertices)
+        loops_len = len(mesh.loops)
+        looptris_len = len(mesh.loop_triangles)
+
+        # Pipe mesh data into VBOs
+        co = vao.get_vertex_buffer(VertexBuffer.POSITION)
+        co.resize(3, vertices_len)
+        mesh.vertices.foreach_get('co', co.data)
+        log('Upload co')
+
+        no = vao.get_vertex_buffer(VertexBuffer.NORMAL)
+        no.resize(3, vertices_len)
+        mesh.vertices.foreach_get('normal', no.data)
+        log('Upload no')
+
+        indices = vao.get_index_buffer()
+        indices.resize(looptris_len * 3)
+        mesh.loop_triangles.foreach_get('vertices', indices.data)
+        log('Upload indices')
+
+        op_log('Set buffers')
+
+        # Upload buffers to the GPU
+        vao.upload(shader.program)
+        op_log('Total VAO write time')
+
+        # Cleanup
+        self.eval_obj.to_mesh_clear()
+        # mesh_owner.to_mesh_clear()
+        op_log('Total Cleanup time')
+
+    def rebuild_on_render_unsafe(self, shader):
+        """Fill the VAO with new mesh data 
+
+        This unsafe version uses direct C struct access to fetch data.
+
+        Parameters:
+            shader (BaseShader): Shader program that houses the VAO target
+        """
+        init_log('Rebuild on Render (unsafe): {}'.format(self))
+        
+        vao = self.vao
 
         # depsgraph = bpy.context.evaluated_depsgraph_get()
         # log('depsgraph {}'.format(depsgraph))
@@ -144,28 +196,52 @@ class Mesh(Renderable):
         # Swap backbuffer with the active VAO 
         if self.is_backbuffer_ready:
             self.is_backbuffer_ready = False
-            self.rebuild_on_render_v4(shader)
+            self.rebuild_on_render(shader)
 
-            # TODO: Backbuffer swap seems unnecessary here (since we're
+            # TODO: Backbuffer swap is unnecessary here (since we're
             # creating and filling and immediately swapping in one whole step)
             # but eventually I'd like to slowly fill the backbuffer over multiple
             # frames for larger meshes IF that ends up being the solution to 
             # improve visual performance when editing large (1mil+ vert) meshes.
 
-            print('Swap backbuffer')
-            vao = self.vao 
-            self.vao = self.vao_backbuffer
-            self.vao_backbuffer = vao
-            print('Done with swap')
+            # print('Swap backbuffer')
+            # vao = self.vao 
+            # self.vao = self.vao_backbuffer
+            # self.vao_backbuffer = vao
+            # print('Done with swap')
 
-        print('Bind VAO')
-        self.vao.bind(shader.program)
-        print('Draw elements', self.vao.total_indices)
+        vao = self.vao
+        print('Bind {}'.format(vao))
 
-        # Texture stuff go here.
+        vao.bind(shader.program)
 
-        glDrawElements(GL_TRIANGLES, self.vao.total_indices, GL_UNSIGNED_INT, 0)
+        # TODO: Texture stuff
         
-        print('Unbind?')
-        self.vao.unbind()
+        # print_current_gl_bindings()
+
+        if vao.is_valid():
+            glDrawElements(GL_TRIANGLES, self.vao.total_indices, GL_UNSIGNED_INT, 0)
+        else:
+            print('Invalid state for glDrawElements. Current bindings:')
+            print_current_gl_bindings()
+            print('\tBound VAO: {}'.format(vao))
+            
+        vao.unbind()
         print('Done')
+
+
+def print_current_gl_bindings():
+    """Print out the currently bound buffers for debugging"""
+    buf = Buffer(GL_INT, 1)
+
+    glGetIntegerv(GL_CURRENT_PROGRAM, buf)
+    print('\tProgram: {}'.format(buf[0]))
+
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, buf)
+    print('\tVAO: {}'.format(buf[0]))
+
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, buf)
+    print('\tVBO: {}'.format(buf[0]))
+
+    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, buf)
+    print('\tEBO: {}'.format(buf[0]))

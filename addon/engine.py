@@ -13,7 +13,7 @@ from .lights import (
 )
 
 from .renderables import (
-    Mesh
+    ScratchpadMesh
 )
 
 from .shaders.fallback import FallbackShader
@@ -46,7 +46,7 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
     bl_use_preview = True
 
     # Mesh instances shared between render engines
-    # Maps a bpy.types.Mesh to a Mesh.
+    # Maps a bpy.types.Mesh to a ScratchpadMesh.
     # TODO: Unfortunately, I'm getting access violation crashes when toggling between 
     # different modes (layout, editing, sculpting). Hard to trace. I'm *guessing* that
     # GL isn't shared between them, because I'm also getting weird issues with every
@@ -131,8 +131,8 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
                 self.update_mesh(obj, depsgraph)
             elif obj.type == 'LIGHT':
                 self.update_light(obj)
-            # else:
-            #     print('Unhandled scene object type', obj.type)
+            else:
+                print('Unhandled scene object type', obj.type)
         
         # Replace old aggregates of tracked scene data
         # self.meshes = self.updated_meshes
@@ -154,7 +154,7 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
         rebuild_geometry = obj.name in self.updated_geometries
         
         if obj.data not in self.meshes:
-            mesh = Mesh()
+            mesh = ScratchpadMesh()
             self.meshes[obj.data] = mesh
             rebuild_geometry = True
         else:

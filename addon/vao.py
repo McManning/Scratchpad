@@ -42,13 +42,21 @@ class VertexBuffer:
         self.count = 0
         self.components = 0
 
-        vbo = Buffer(GL_INT, 1)
-        glGenBuffers(1, vbo)
-        self.vbo = vbo[0]
+        buf = Buffer(GL_INT, 1)
+        glGenBuffers(1, buf)
+        self.vbo_id = buf[0]
 
-    def destroy(self):
-        glDeleteBuffers(1, self.vbo)
-        if self.buffer: glDeleteBuffers(1, self.buffer)
+    def __repr__(self):
+        return '<VertexBuffer(attr={}, vbo_id={}, valid={}) object at {}>'.format(
+            self.attr,
+            self.vbo_id,
+            glIsBuffer(self.vbo_id),
+            id(self)
+        )
+
+    # def destroy(self):
+    #     glDeleteBuffers(1, self.buf)
+    #     if self.buffer: glDeleteBuffers(1, self.buffer)
 
     def as_pointer(self):
         """Access to the raw pointer to this buffer's data"""
@@ -97,19 +105,17 @@ class VertexBuffer:
         self.buffer = Buffer(GL_FLOAT, self.components * self.count, self._data)
 
     def upload(self, program):
-        location = glGetAttribLocation(program, self.attr)
-        if location < 0: return 
-
         size_in_bytes = self.components * self.count * 4
 
-        # Is this a slow memcpy operation then? 
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
-        glBufferData(GL_ARRAY_BUFFER, size_in_bytes, self.buffer, GL_DYNAMIC_DRAW) # GL_STATIC_DRAW)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_id)
+        glBufferData(GL_ARRAY_BUFFER, size_in_bytes, self.buffer, GL_STATIC_DRAW)
         
-        glEnableVertexAttribArray(location)
+        location = glGetAttribLocation(program, self.attr)
         glVertexAttribPointer(location, self.components, GL_FLOAT, GL_FALSE, 0, 0)
+        glEnableVertexAttribArray(location)
 
-        # glBufferSubData(GL_ARRAY_BUFFER, 0, size_in_bytes, data)
+    def is_valid(self) -> bool:
+        return glIsBuffer(self.vbo_id) != 0
 
 
 class IndexBuffer:
@@ -128,13 +134,20 @@ class IndexBuffer:
         self.buffer = None # bgl.Buffer
         self.count = 0
 
-        ebo = Buffer(GL_INT, 1)
-        glGenBuffers(1, ebo)
-        self.ebo = ebo[0]
+        buf = Buffer(GL_INT, 1)
+        glGenBuffers(1, buf)
+        self.ebo_id = buf[0]
 
-    def destroy(self):
-        glDeleteBuffers(1, self.ebo)
-        if self.buffer: glDeleteBuffers(1, self.buffer)
+    def __repr__(self):
+        return '<IndexBuffer(ebo_id={}, valid={}) object at {}>'.format(
+            self.ebo_id,
+            glIsBuffer(self.ebo_id),
+            id(self)
+        )
+
+    # def destroy(self):
+    #     glDeleteBuffers(1, self.buf)
+    #     if self.buffer: glDeleteBuffers(1, self.buffer)
 
     def as_pointer(self):
         """Access to the raw pointer to this buffer's data"""
@@ -171,12 +184,12 @@ class IndexBuffer:
     def upload(self, program):
         size_in_bytes = self.count * 4
 
-        # print('Set EBO', len(self.buffer))
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.ebo)
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_in_bytes, self.buffer, GL_DYNAMIC_DRAW) # GL_STATIC_DRAW)
-
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.ebo_id)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_in_bytes, self.buffer, GL_STATIC_DRAW)
         # glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, size_in_bytes, data)
 
+    def is_valid(self) -> bool:
+        return glIsBuffer(self.ebo_id) != 0
 
 class VAO:
     """Abstraction for managing an active vertex array object
@@ -200,12 +213,21 @@ class VAO:
         vao.unbind()
     """
     def __init__(self):
-        vao = Buffer(GL_INT, 1)
-        glGenVertexArrays(1, vao)
-        self.vao = vao[0]
+        buf = Buffer(GL_INT, 1)
+        glGenVertexArrays(1, buf)
+        self.vao_id = buf[0]
 
         self.vertex_buffers = dict()
         self.index_buffer = IndexBuffer()
+
+    def __repr__(self):
+        return 'VAO(vao_id={}, indices={}, valid={}): {} {}'.format(
+            self.vao_id,
+            self.total_indices,
+            glIsVertexArray(self.vao_id),
+            self.index_buffer,
+            self.vertex_buffers.values()
+        )
 
     @property
     def total_indices(self):
@@ -222,10 +244,11 @@ class VAO:
     def get_index_buffer(self) -> IndexBuffer:
         return self.index_buffer
 
-    def destroy(self):
-        self.index_buffer.destroy()
-        for buf in self.vertex_buffers.values():
-            buf.destroy()
+    # def destroy(self):
+    #     glDeleteBuffers(1, self.buf)
+    #     self.index_buffer.destroy()
+    #     for buf in self.vertex_buffers.values():
+    #         buf.destroy()
 
     def upload(self, program):
         self.bind(program)
@@ -237,10 +260,20 @@ class VAO:
         self.unbind()
 
     def bind(self, program):
-        print('Bind VAO', self.vao)
-        glBindVertexArray(self.vao)
+        glBindVertexArray(self.vao_id)
         
     def unbind(self):
-        print('Unbind VAO', self.vao)
         glBindVertexArray(0)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
 
+    def is_valid(self) -> bool:
+        """Safety function to verify all buffers are still present"""
+        if not self.index_buffer.is_valid():
+            return False 
+        
+        for vbo in self.vertex_buffers.values():
+            if not vbo.is_valid():
+                return False
+        
+        return glIsVertexArray(self.vao_id) != 0
