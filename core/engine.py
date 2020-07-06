@@ -25,6 +25,7 @@ from .properties import (
     BaseDynamicMaterialProperties
 )
 
+from .debug import debug
 from ..lib.registry import autoregister
 
 def sort_by_draw_order(arr):
@@ -135,7 +136,7 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
             elif obj.type == 'LIGHT':
                 self.update_light(obj)
             else:
-                print('Unhandled scene object type', obj.type)
+                debug('Unhandled scene object type', obj.type)
         
         # Replace old aggregates of tracked scene data
         # self.meshes = self.updated_meshes
@@ -296,18 +297,18 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
                     )
 
         try:
-            active_shader.error = None
+            active_shader.last_error = None
 
             # Push dynamic properties from the UI to the shader
             props = getattr(mat, shader_group_key, None)
-            if props: active_shader.update_renderer_properties(props)
+            if props: active_shader.update_properties(props)
 
             needs_recompile = active_shader.needs_recompile()
 
-            print('--- Active shader', active_shader)
-            print('--- Force reload', settings.force_reload)
-            print('--- Live reload', settings.live_reload)
-            print('--- needs recompile', needs_recompile)
+            debug('--- Active shader', active_shader)
+            debug('--- Force reload', settings.force_reload)
+            debug('--- Live reload', settings.live_reload)
+            debug('--- needs recompile', needs_recompile)
             
             # Trigger a recompile if we're forcing it or the files on disk
             # have been modified since the last render
@@ -337,7 +338,7 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
             print('SHADER ERROR', type(e))
             print(e)
             settings.last_shader_error = str(e)
-            active_shader.error = str(e)
+            active_shader.last_error = str(e)
 
         self.updated_shaders[mat] = active_shader
 

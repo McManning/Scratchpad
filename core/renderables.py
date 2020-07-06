@@ -3,7 +3,7 @@ import bpy
 from bgl import *
 
 from .mesh_data import MeshData
-from .debug import init_log, log, op_log
+from .debug import init_log, log, op_log, debug, IS_DEBUG
 from .vao import (
     VAO,
     VertexBuffer,
@@ -191,7 +191,7 @@ class ScratchpadMesh(Renderable):
 
 
     def draw(self, shader):
-        print('Draw', self)
+        debug('Draw', self)
 
         # Swap backbuffer with the active VAO 
         if self.is_backbuffer_ready:
@@ -211,37 +211,41 @@ class ScratchpadMesh(Renderable):
             # print('Done with swap')
 
         vao = self.vao
-        print('Bind {}'.format(vao))
+        debug('Bind {}'.format(vao))
 
         vao.bind(shader.program)
 
         # TODO: Texture stuff
         
-        # print_current_gl_bindings()
-
-        if vao.is_valid():
+        if not IS_DEBUG:
+            # No validation check, assume stable
             glDrawElements(GL_TRIANGLES, self.vao.total_indices, GL_UNSIGNED_INT, 0)
         else:
-            print('Invalid state for glDrawElements. Current bindings:')
-            print_current_gl_bindings()
-            print('\tBound VAO: {}'.format(vao))
-            
+            debug_print_current_gl_bindings()
+
+            if vao.is_valid():
+                glDrawElements(GL_TRIANGLES, self.vao.total_indices, GL_UNSIGNED_INT, 0)
+            else:
+                debug('Invalid state for glDrawElements. Current bindings:')
+                debug_print_current_gl_bindings()
+                debug('\tBound VAO: {}'.format(vao))
+
         vao.unbind()
-        print('Done')
+        debug('Done')
 
 
-def print_current_gl_bindings():
+def debug_print_current_gl_bindings():
     """Print out the currently bound buffers for debugging"""
     buf = Buffer(GL_INT, 1)
 
     glGetIntegerv(GL_CURRENT_PROGRAM, buf)
-    print('\tProgram: {}'.format(buf[0]))
+    debug('\tProgram: {}'.format(buf[0]))
 
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, buf)
-    print('\tVAO: {}'.format(buf[0]))
+    debug('\tVAO: {}'.format(buf[0]))
 
     glGetIntegerv(GL_ARRAY_BUFFER_BINDING, buf)
-    print('\tVBO: {}'.format(buf[0]))
+    debug('\tVBO: {}'.format(buf[0]))
 
     glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, buf)
-    print('\tEBO: {}'.format(buf[0]))
+    debug('\tEBO: {}'.format(buf[0]))

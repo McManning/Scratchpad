@@ -14,6 +14,7 @@ from bpy.props import (
 
 from bpy.types import PropertyGroup
 
+from .debug import debug
 from ..shaders import SUPPORTED_SHADERS
 from ..lib.registry import autoregister
 
@@ -181,7 +182,7 @@ def register_dynamic_property_group(class_name: str, base: PropertyGroup, proper
     attr = {}
     images = []
 
-    print('Register dynamic', class_name, base, properties)
+    debug('Register dynamic', class_name, base, properties)
 
     for prop in properties:
         field_type, key, title, description, default_value, min_value, max_value = prop
@@ -276,7 +277,7 @@ def register_dynamic_property_group(class_name: str, base: PropertyGroup, proper
     instance.images = images 
     instance.property_key = property_key
 
-    print('Register dynamic', instance)
+    debug('Register dynamic', instance)
     bpy.utils.register_class(instance)
 
     # track for unregister_dynamic_property_group
@@ -290,7 +291,7 @@ def unregister_dynamic_property_group(class_name: str):
     """
     if hasattr(bpy, 'scratchpad_dynamic_property_groups') and class_name in bpy.scratchpad_dynamic_property_groups:
         instance = bpy.scratchpad_dynamic_property_groups[class_name]
-        print('Unregister dynamic', instance)
+        debug('Unregister dynamic', instance)
 
         try:
             bpy.utils.unregister_class(instance)
@@ -299,7 +300,7 @@ def unregister_dynamic_property_group(class_name: str):
         
         del bpy.scratchpad_dynamic_property_groups[class_name]
     else:
-        print('Cannot find dynamic to unregister:', class_name)
+        debug('Cannot find dynamic to unregister:', class_name)
 
 # def unregister_dynamic_property_groups():
 #     if hasattr(bpy, 'dynamic_property_groups'):
