@@ -157,6 +157,7 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
         """
         rebuild_geometry = obj.name in self.updated_geometries
         
+        # TODO: This isn't pruning deleted meshes from the list. 
         if obj.data not in self.meshes:
             mesh = ScratchpadMesh()
             self.meshes[obj.data] = mesh
@@ -284,11 +285,11 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
 
                 settings.last_shader_error = ''
 
-                print('Swap dynamic properties to', active_shader)
+                debug('Swap dynamic properties to', active_shader)
 
                 unregister_dynamic_property_group(shader_group_key)
-                props = active_shader.get_renderer_properties()
-                if props:
+                props = active_shader.get_properties()
+                if props and not props.is_empty:
                     register_dynamic_property_group(
                         shader_group_key, 
                         BaseDynamicMaterialProperties,
@@ -321,7 +322,7 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
                 # Load new dynamic material properties into context
                 unregister_dynamic_property_group(material_group_key)
                 props = active_shader.get_material_properties()
-                if props:
+                if props and not props.is_empty:
                     register_dynamic_property_group(
                         material_group_key, 
                         BaseDynamicMaterialProperties,
@@ -373,10 +374,10 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
         shader = self.shaders[mat]
         renderables = self.renderables[mat]
 
-        if shader.error:
+        if shader.last_error:
             shader = self.fallback_shader
 
-        shader.bind()
+        shader.bind('TODO: Pass names! (actually techniques)')
         shader.set_camera_matrices(
             region3d.view_matrix,
             region3d.window_matrix

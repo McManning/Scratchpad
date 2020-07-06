@@ -5,6 +5,7 @@ from time import time
 from ..base import (
     BaseShader, 
     ShaderProperties,
+    compile_program
 )
 
 from .preprocessor import GLSLPreprocessor
@@ -31,15 +32,16 @@ class GLSLShader(BaseShader):
         self.properties.add('source_file', 'geom_filename', 'Geometry', 'GLSL Geometry shader source file')
         self.properties.add('source_file', 'frag_filename', 'Fragment', 'GLSL Fragment shader source file')
 
-        self.properties.add('image', 'diffuse', 'Diffuse', 'Diffuse color channel image')
         self.material_properties = ShaderProperties()
+        self.material_properties.add('image', 'diffuse', 'Diffuse', 'Diffuse color channel texture')
 
-    def get_renderer_properties(self):
+    def get_properties(self):
         return self.properties
 
-    def update_renderer_properties(self, props):
+    def update_properties(self, props):
         self.properties.from_property_group(props)
         
+        # Check for minimum required files
         if not os.path.isfile(props.vert_filename):
             raise FileNotFoundError('Missing required vertex shader')
             
@@ -53,18 +55,18 @@ class GLSLShader(BaseShader):
             'gs': props.geom_filename,
             'fs': props.frag_filename
         }
+
+        # Monitor each stage file for changes
+        self.watch([f for f in self.stages.values() if f])
         
-        self.monitored_files = [f for f in self.stages.values() if f]
-
-        # TODO: More dynamic (iterate properties, track each one that's an image)
-        self.diffuse = props.diffuse
-
     def get_material_properties(self):
         return self.material_properties
 
     def update_material_properties(self, props):
         self.material_properties.from_property_group(props)
-        
+
+        self.diffuse = props.diffuse
+
     def compile(self):
         sources = {}
 
@@ -93,7 +95,7 @@ class GLSLShader(BaseShader):
         # we can still detect file changes
         self.update_mtimes()
 
-        self.compile_from_strings(
+        self.program = compile_program(
             sources['vs'], 
             sources['fs'], 
             sources['tcs'], 
@@ -111,27 +113,8 @@ class GLSLShader(BaseShader):
 
     def bind(self):
         super(GLSLShader, self).bind()
-
-        # TODO: Doesn't work. Change this up
-        # self.set_float("_Time", time())
         self.bind_textures()
 
-    def set_camera_matrices(self, view_matrix, projection_matrix):
-        self.view_matrix = view_matrix
-        self.projection_matrix = projection_matrix
-
-        self.set_mat4("ViewMatrix", view_matrix.transposed())
-        self.set_mat4("ProjectionMatrix", projection_matrix.transposed())
-        self.set_mat4("CameraMatrix", view_matrix.inverted().transposed())
-
-    def set_object_matrices(self, model_matrix):
-        mv = self.view_matrix @ model_matrix
-        mvp = self.projection_matrix @ mv
-
-        self.set_mat4("ModelMatrix", model_matrix.transposed())
-        self.set_mat4("ModelViewMatrix", mv.transposed())
-        self.set_mat4("ModelViewProjectionMatrix", mvp.transposed())
-        
     def set_lighting(self, lighting):
         """Copy lighting information into shader uniforms
         

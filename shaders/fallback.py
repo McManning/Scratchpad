@@ -1,5 +1,8 @@
 
-from .base import BaseShader
+from .base import (
+    BaseShader,
+    compile_program
+)
 
 VS_FALLBACK = '''
 #version 330 core
@@ -58,24 +61,4 @@ void main()
 class FallbackShader(BaseShader):
     """Built-in default shader as a "safe" fallback in case of failures"""
     def compile(self):
-        self.compile_from_strings(VS_FALLBACK, FS_FALLBACK)
-
-    def set_camera_matrices(self, view_matrix, projection_matrix):
-        self.view_matrix = view_matrix
-        self.projection_matrix = projection_matrix
-
-        self.set_mat4("ViewMatrix", view_matrix.transposed())
-        self.set_mat4("ProjectionMatrix", projection_matrix.transposed())
-        self.set_mat4("CameraMatrix", view_matrix.inverted().transposed())
-
-    def set_object_matrices(self, model_matrix):
-        mv = self.view_matrix @ model_matrix
-        mvp = self.projection_matrix @ mv
-
-        self.set_mat4("ModelMatrix", model_matrix.transposed())
-        self.set_mat4("ModelViewMatrix", mv.transposed())
-        self.set_mat4("ModelViewProjectionMatrix", mvp.transposed())
-        
-    def set_lighting(self, lighting):
-        # No lighting information used for the fallback
-        pass
+        self.program = compile_program(VS_FALLBACK, FS_FALLBACK)

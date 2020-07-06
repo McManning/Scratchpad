@@ -5,6 +5,7 @@ from typing import List
 from .base import (
     BaseShader, 
     ShaderProperties,
+    compile_program
 )
 
 from .fallback import (
@@ -23,17 +24,17 @@ class OGSFXShader(BaseShader):
 
         self.material_properties = ShaderProperties()
 
-    def get_renderer_properties(self):
+    def get_properties(self):
         return self.properties
 
-    def update_renderer_properties(self, settings):
+    def update_properties(self, settings):
         self.properties.from_property_group(settings)
 
         if not os.path.isfile(settings.filename):
             raise FileNotFoundError('Missing required OGSFX file')
         
         self.filename = settings.filename
-        self.monitored_files = [settings.filename]
+        self.watch([settings.filename])
 
     def get_material_properties(self):
         return self.material_properties
@@ -44,7 +45,7 @@ class OGSFXShader(BaseShader):
         
     def compile(self):
         # For now, uses fallback
-        self.compile_from_strings(VS_FALLBACK, FS_FALLBACK)
+        self.program = compile_program(VS_FALLBACK, FS_FALLBACK)
         self.update_mtimes()
 
         # Pretend some settings have loaded from the .ogsfx
