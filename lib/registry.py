@@ -1,13 +1,7 @@
-
-# Handles management of class register/unregister with Blender
-# Inspired by magic_uv's implementation
-
-# TODO: Impl https://github.com/blender/blender-addons/blob/master/magic_uv/utils/bl_class_registry.py
-
 import bpy 
 
 class Registry:
-    """Class list to register/unregister with bpy"""
+    """Manager for a set of classes to (un)register with bpy"""
     classes = []
 
     def __call__(self, cls):

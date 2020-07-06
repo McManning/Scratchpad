@@ -434,8 +434,3 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
 
         self.unbind_display_space_shader()
         # glDisable(GL_BLEND)
-
-
-classes = (
-    ScratchpadRenderEngine,
-)

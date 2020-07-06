@@ -328,18 +328,3 @@ class SCRATCHPAD_MATERIAL_PT_settings_dynamic(BasePanel):
                 # TODO: Support grouping in some way 
                 for name in props.__annotations__.keys():
                     col.prop(props, name)
-
-classes = (
-    # Renderer panels
-    SCRATCHPAD_RENDER_PT_settings,
-    SCRATCHPAD_RENDER_PT_settings_viewport,
-
-    # Light panels
-    SCRATCHPAD_LIGHT_PT_light,
-
-    # Material panels
-    SCRATCHPAD_PT_context_material,
-    SCRATCHPAD_MATERIAL_PT_settings,
-    SCRATCHPAD_MATERIAL_PT_settings_shader,
-    SCRATCHPAD_MATERIAL_PT_settings_dynamic
-)

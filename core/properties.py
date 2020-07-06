@@ -309,9 +309,3 @@ def unregister_dynamic_property_group(class_name: str):
 #             bpy.utils.unregister_class(value)
     
 #     bpy.dynamic_property_groups = {}
-
-classes = (
-    ScratchpadProperties,
-    ScratchpadMaterialProperties,
-    ScratchpadLightProperties,
-)
