@@ -33,61 +33,112 @@ class CustomDataLayer(Structure):
         ('data', c_void_p),
     ]
 
-class CustomData(Structure):
-    """ 
-        Structure which stores custom element data associated with mesh elements
-        (vertices, edges or faces). The custom data is organized into a series of
-        layers, each with a data type (e.g. MTFace, MDeformVert, etc.).
-    """
-    # Ref: https://github.com/blender/blender/blob/v2.82/source/blender/makesdna/DNA_customdata_types.h#L71
-    _fields_ = [
-        ('layers', POINTER(CustomDataLayer)),
+if bpy.app.version[1] < 83: # 2.82
+    class ID(Structure):
+        # Ref: https://github.com/blender/blender/blob/v2.82/source/blender/makesdna/DNA_ID.h#L246
+        # Added because it's a dependency of Mesh. Unused pointers are c_void_p
+        _fields_ = [
+            ('next', c_void_p),
+            ('prev', c_void_p),
+            ('newid', c_void_p),
+            ('lib', c_void_p),
+
+            ('name', c_char * 66),
+
+            ('flag', c_short),
+
+            ('tag', c_int),
+            ('us', c_int),
+            ('icon_id', c_int),
+            ('recalc', c_int),
+            
+            ('_pad', c_char * 4), # Blender/2.82
+            
+            # ('recalc_up_to_undo_push', c_int), # Blender/master
+            # ('recalc_after_undo_push', c_int), # Blender/master
     
-        ('typemap', c_int * 42), # Blender/2.82
-        ('_pad0', c_char * 4), # Blender/2.82
+            # ('session_uuid', c_uint), # Blender/master
+
+            ('properties', c_void_p),
+            ('override_library', c_void_p),
+            ('orig_id', c_void_p),
+            ('py_instance', c_void_p),
+        ]
         
-        # ('typemap', c_int * 48), # Blender/master
-        # ('_pad', c_char * 4), # Blender/master
+    class CustomData(Structure):
+        """ 
+            Structure which stores custom element data associated with mesh elements
+            (vertices, edges or faces). The custom data is organized into a series of
+            layers, each with a data type (e.g. MTFace, MDeformVert, etc.).
+        """
+        # Ref: https://github.com/blender/blender/blob/v2.82/source/blender/makesdna/DNA_customdata_types.h#L71
+        _fields_ = [
+            ('layers', POINTER(CustomDataLayer)),
         
-        ('totlayer', c_int),
-        ('maxlayer', c_int),
+            ('typemap', c_int * 42), # Blender/2.82
+            ('_pad0', c_char * 4), # Blender/2.82
+            
+            # ('typemap', c_int * 48), # Blender/master
+            # ('_pad', c_char * 4), # Blender/master
+            
+            ('totlayer', c_int),
+            ('maxlayer', c_int),
 
-        ('totsize', c_int),
+            ('totsize', c_int),
 
-        ('pool', c_void_p),
-        ('external', c_void_p),
-    ]
+            ('pool', c_void_p),
+            ('external', c_void_p),
+        ]
+else: # 2.83.1+ 
+    class ID(Structure):
+        # Ref: https://github.com/blender/blender/blob/v2.83.1/source/blender/makesdna/DNA_ID.h#L246
+        # Added because it's a dependency of Mesh. Unused pointers are c_void_p
+        _fields_ = [
+            ('next', c_void_p),
+            ('prev', c_void_p),
+            ('newid', c_void_p),
+            ('lib', c_void_p),
 
-class ID(Structure):
-    # Ref: https://github.com/blender/blender/blob/v2.82/source/blender/makesdna/DNA_ID.h#L246
-    # Added because it's a dependency of Mesh. Unused pointers are c_void_p
-    _fields_ = [
-        ('next', c_void_p),
-        ('prev', c_void_p),
-        ('newid', c_void_p),
-        ('lib', c_void_p),
+            ('name', c_char * 66),
 
-        ('name', c_char * 66),
+            ('flag', c_short),
 
-        ('flag', c_short),
+            ('tag', c_int),
+            ('us', c_int),
+            ('icon_id', c_int),
+            ('recalc', c_int),
+            
+            ('recalc_up_to_undo_push', c_int), # Blender/2.83.1
+            ('recalc_after_undo_push', c_int), # Blender/2.83.1
+    
+            ('session_uuid', c_uint), # Blender/2.83.1
 
-        ('tag', c_int),
-        ('us', c_int),
-        ('icon_id', c_int),
-        ('recalc', c_int),
+            ('properties', c_void_p),
+            ('override_library', c_void_p),
+            ('orig_id', c_void_p),
+            ('py_instance', c_void_p),
+        ]
+
+    class CustomData(Structure):
+        """ 
+            Structure which stores custom element data associated with mesh elements
+            (vertices, edges or faces). The custom data is organized into a series of
+            layers, each with a data type (e.g. MTFace, MDeformVert, etc.).
+        """
+        # Ref: https://github.com/blender/blender/blob/v2.82/source/blender/makesdna/DNA_customdata_types.h#L71
+        _fields_ = [
+            ('layers', POINTER(CustomDataLayer)),
         
-        ('_pad', c_char * 4), # Blender/2.82
-        
-        # ('recalc_up_to_undo_push', c_int), # Blender/master
-        # ('recalc_after_undo_push', c_int), # Blender/master
- 
-        # ('session_uuid', c_uint), # Blender/master
+            ('typemap', c_int * 47),
+            
+            ('totlayer', c_int),
+            ('maxlayer', c_int),
 
-        ('properties', c_void_p),
-        ('override_library', c_void_p),
-        ('orig_id', c_void_p),
-        ('py_instance', c_void_p),
-    ]
+            ('totsize', c_int),
+
+            ('pool', c_void_p),
+            ('external', c_void_p),
+        ]
 
 class MVert(Structure):
     """
