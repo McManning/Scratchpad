@@ -205,7 +205,7 @@ class BaseShader:
         """Check if the file update time has changed in any of the source files"""
         return self.prev_mtimes != self.mtimes() 
 
-    def watch(files: list):
+    def watch(self, files: list):
         """Monitor one or more files for changes on disk.
 
         This replaces the previous watchlist with a new one.
@@ -417,8 +417,6 @@ class BaseShader:
         Parameters:
             props (BaseDynamicMaterialProperties): Instance to read
         """
-        # TODO: Rename. These are dynamic properties stored
-        # on bpy.types.Material.scratchpad_dynamic
         pass
 
     def compile(self):
