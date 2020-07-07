@@ -33,6 +33,7 @@ class GLSLShader(BaseShader):
         self.properties.add('source_file', 'frag_filename', 'Fragment', 'GLSL Fragment shader source file')
 
         self.material_properties = ShaderProperties()
+        self.material_properties.add('float', 'my_float', 'My Float', 'Something about my float', 0.5, 0, 1)
         self.material_properties.add('image', 'diffuse', 'Diffuse', 'Diffuse color channel texture')
 
     def get_properties(self):
@@ -111,8 +112,13 @@ class GLSLShader(BaseShader):
         else:
             print('no diffuse')
 
-    def bind(self):
-        super(GLSLShader, self).bind()
+    def bind(self, render_pass: str):
+        """Bind the GL program for the given pass
+        
+        Properties:
+            render_pass (str): Pass name. E.g. `Shadow`, `Main`
+        """
+        super(GLSLShader, self).bind(render_pass)
         self.bind_textures()
 
     def set_lighting(self, lighting):

@@ -72,78 +72,8 @@ class SCRATCHPAD_MATERIAL_PT_settings(BasePanel):
 @autoregister
 class SCRATCHPAD_MATERIAL_PT_settings_shader(BasePanel):
     """Shader configurations and reload settings"""
-    bl_label = 'Shader'
+    bl_label = 'Shader Settings'
     bl_parent_id = 'SCRATCHPAD_MATERIAL_PT_settings'
-
-    def draw_image_template(self, props, name, col):
-        layout = self.layout
-
-        # Would need to be something that makes a new texture and assigns it automatically...
-        # Custom operator I guess?
-
-        # TODO: Less magic way of getting the property name 
-        # TODO: Better layout and more image settings (where applicable).
-        # Would it make more sense to be a texture here so we can set wrap settings?
-        text = props.__annotations__[name][1]['name']
-        
-        col.separator()
-        col.template_ID(props, name, new='image.new', open='image.open', text=text)
-        # img = props.get(name)
-
-        # if img:
-        #     box.prop(img, 'colorspace_settings')
-
-        # tex = props.get(name)
-        # if tex:
-        #     box.template_image(tex, "image", tex.image_user, compact=True)
-
-        # if props.tex:
-        #     # Texture input to change reference
-        #     layout.prop(props, name)
-
-        #     # Template to edit the associated image
-        #     tex = props.tex 
-        #     layout.template_image(tex, "image", tex.image_user)
-        # else:
-        #     col.template_ID(props, name, new="texture.new")
-            
-            # row = col.row(align=True) 
-            
-            # # Texture source input with a button to 
-            # # quickly create and assign a new texture
-            # row.prop(props, name)
-            # row.operator('scratchpad.add_texture', text='New', icon='ADD')
-
-        # tex = props.tex
-        # if tex:
-        #     layout.template_image(tex, "image", tex.image_user)
-        # else:
-        #     col.template_texture_user()
-
-        # layout.template_image(props, "image")
-        # if not pin_id:
-        #     # no textures in context, in edit mode.
-        #     col.template_texture_user()
-
-        # if user or pin_id:
-        #     col.separator()
-            
-        #     if pin_id:
-        #         col.template_ID(space, "pin_id")
-        #     else:
-        #         propname = context.texture_user_property.identifier
-        #         col.template_ID(user, propname, new="texture.new")
-
-        #     if tex:
-        #         col.separator()
-
-        #         split = col.split(factor=0.2)
-        #         split.label(text="Type")
-        #         split.prop(tex, "type", text="")
-
-        # row = col.row(align=True)
-        # tex = context.texture
-        # layout.template_image(tex, "image", tex.image_user)
 
     def draw(self, context):
         mat = context.material 
@@ -152,11 +82,6 @@ class SCRATCHPAD_MATERIAL_PT_settings_shader(BasePanel):
         layout.use_property_decorate = False
         
         settings = mat.scratchpad
-
-        # self.draw_image_test(context)
-
-        # layout.prop_search(settings, 'image', bpy.data, "images")
-        # layout.template_ID(self, "image", new="image.new", open="image.open")
 
         col = layout.column(align=True)
         col.prop(settings, 'loader')
@@ -168,13 +93,10 @@ class SCRATCHPAD_MATERIAL_PT_settings_shader(BasePanel):
             col = layout.column(align=True)
 
             props = getattr(mat, key)
+
             # Annotations are used here because this is how we added *Property instances
-            # TODO: Support grouping in some way 
             for name in props.__annotations__.keys():
-                if name in props.images:
-                    self.draw_image_template(props, name, col)
-                else: # default renderer
-                    col.prop(props, name)
+                col.prop(props, name)
 
         layout.separator()
 
@@ -298,8 +220,78 @@ class SCRATCHPAD_PT_context_material(BasePanel):
 @autoregister
 class SCRATCHPAD_MATERIAL_PT_settings_dynamic(BasePanel):
     """Dynamic per-shader properties added to a material"""
-    bl_label = 'Shader Properties'
+    bl_label = 'Material Properties'
     bl_parent_id = 'SCRATCHPAD_MATERIAL_PT_settings'
+
+    def draw_image_template(self, props, name, col):
+        layout = self.layout
+
+        # Would need to be something that makes a new texture and assigns it automatically...
+        # Custom operator I guess?
+
+        # TODO: Less magic way of getting the property name 
+        # TODO: Better layout and more image settings (where applicable).
+        # Would it make more sense to be a texture here so we can set wrap settings?
+        text = props.__annotations__[name][1]['name']
+        
+        col.separator()
+        col.template_ID(props, name, new='image.new', open='image.open', text=text)
+        # img = props.get(name)
+
+        # if img:
+        #     box.prop(img, 'colorspace_settings')
+
+        # tex = props.get(name)
+        # if tex:
+        #     box.template_image(tex, "image", tex.image_user, compact=True)
+
+        # if props.tex:
+        #     # Texture input to change reference
+        #     layout.prop(props, name)
+
+        #     # Template to edit the associated image
+        #     tex = props.tex 
+        #     layout.template_image(tex, "image", tex.image_user)
+        # else:
+        #     col.template_ID(props, name, new="texture.new")
+            
+            # row = col.row(align=True) 
+            
+            # # Texture source input with a button to 
+            # # quickly create and assign a new texture
+            # row.prop(props, name)
+            # row.operator('scratchpad.add_texture', text='New', icon='ADD')
+
+        # tex = props.tex
+        # if tex:
+        #     layout.template_image(tex, "image", tex.image_user)
+        # else:
+        #     col.template_texture_user()
+
+        # layout.template_image(props, "image")
+        # if not pin_id:
+        #     # no textures in context, in edit mode.
+        #     col.template_texture_user()
+
+        # if user or pin_id:
+        #     col.separator()
+            
+        #     if pin_id:
+        #         col.template_ID(space, "pin_id")
+        #     else:
+        #         propname = context.texture_user_property.identifier
+        #         col.template_ID(user, propname, new="texture.new")
+
+        #     if tex:
+        #         col.separator()
+
+        #         split = col.split(factor=0.2)
+        #         split.label(text="Type")
+        #         split.prop(tex, "type", text="")
+
+        # row = col.row(align=True)
+        # tex = context.texture
+        # layout.template_image(tex, "image", tex.image_user)
 
     def draw(self, context):
         mat = context.material
@@ -311,20 +303,21 @@ class SCRATCHPAD_MATERIAL_PT_settings_dynamic(BasePanel):
         
         col = layout.column()
         
+        key = settings.dynamic_material_property_group_key
+
         if settings.last_shader_error:
             col.label(text='Resolve shader errors to see additional properties')
-        elif not hasattr(mat, 'scratchpad_dynamic'):
+        elif not hasattr(mat, key):
             col.label(text='No additional properties for the current shader')
         else:
-            # Render dynamic properties if provided by the current shader
-            key = settings.dynamic_material_property_group_key
-            if hasattr(mat, key):
-                layout.separator()
-                col = layout.column(align=True)
+            layout.separator()
+            col = layout.column(align=True)
 
-                props = getattr(mat, key)
-                    
-                # Annotations are used here because this is how we added *Property instances
-                # TODO: Support grouping in some way 
-                for name in props.__annotations__.keys():
+            props = getattr(mat, key)
+            # Annotations are used here because this is how we added *Property instances
+            # TODO: Support grouping in some way 
+            for name in props.__annotations__.keys():
+                if name in props.images:
+                    self.draw_image_template(props, name, col)
+                else: # default renderer
                     col.prop(props, name)
