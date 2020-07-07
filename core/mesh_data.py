@@ -344,6 +344,13 @@ class MeshData:
         self.mlooptri_len = len(mesh.loop_triangles)
         self.mlooptri = cast(mesh.loop_triangles[0].as_pointer(), POINTER(MLoopTri))
 
+        # Load pointers to all UV layers
+        mloopuv = []
+        for layer in range(len(mesh.uv_layers)):
+            mloopuv.append(cast(mesh.uv_layers[layer].data[0].as_pointer(), POINTER(MLoopUV)))
+        
+        self.mloopuv = mloopuv
+
         # Cached data
         self.__co = None 
         self.__normals = None 
@@ -389,8 +396,7 @@ class MeshData:
         return self.looptris['tri'].flatten()
 
     def calculate_normals(self):
-        """
-        Generate and cache a Numpy array of vertex normals.
+        """Generate and cache a Numpy array of vertex normals.
 
         This aligns with loops (mloop_len) and accounts for custom split normals
         """
@@ -413,8 +419,7 @@ class MeshData:
             raise 'Custom normals not yet supported'
 
     def calculate_co(self):
-        """
-        Generate and cache a Numpy array of vertex coordinates.
+        """Generate and cache a Numpy array of vertex coordinates.
 
         This aligns with loops (mloop_len), rather than MVert
         """
@@ -447,9 +452,22 @@ class MeshData:
 
         return self.__normals
 
+    def texcoord(self, index: int):
+        """Get a Numpy array of UV coordinates aligned with loops
+
+        Parameters:
+            index (int): texcoord# in [0, total_texcoords)
+            
+        Return:
+            Numpy array with shape (mloop_len, 3)
+        """
+        arr = np.ctypeslib.as_array(self.mloopuv[index], shape=(self.mloop_len,))
+        return arr['uv']
+
     @property
-    def texcoord0(self):
-        raise Exception('Not implemented')
+    def total_texcoords(self):
+        """Total number of UV maps on this mesh"""
+        return len(self.mloopuv)
 
     def __repr__(self):
         return '<MeshData(name={}, vertices={}, loops={}, looptris={}, co={}, no={})>'.format(
