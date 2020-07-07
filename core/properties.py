@@ -140,20 +140,6 @@ class ScratchpadLightProperties(PropertyGroup):
     def unregister(cls):
         del bpy.types.Light.scratchpad
 
-# class BaseDynamicShaderProperties(PropertyGroup):
-#     """Base class for groups registered with register_dynamic_property_group()"""
-#     @classmethod
-#     def register(cls):
-#         bpy.types.Material.scratchpad_shader = PointerProperty(
-#             name='Scratchpad Dynamic Shader Properties',
-#             description='',
-#             type=cls
-#         )
-    
-#     @classmethod
-#     def unregister(cls):
-#         del bpy.types.Material.scratchpad_shader
-
 class BaseDynamicMaterialProperties(PropertyGroup):
     """Base class for groups registered with register_dynamic_property_group()"""
     @classmethod
