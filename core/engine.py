@@ -49,6 +49,12 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
     bl_label = "Scratchpad"
     bl_use_preview = True
 
+    # Panels that we don't register this engine with
+    exclude_panels = {
+        'VIEWLAYER_PT_filter',
+        'VIEWLAYER_PT_layer_passes',
+    }
+
     # Mesh instances shared between render engines
     # Maps a bpy.types.Mesh to a ScratchpadMesh.
     # TODO: Unfortunately, I'm getting access violation crashes when toggling between 
