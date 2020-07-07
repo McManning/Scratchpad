@@ -174,6 +174,16 @@ class ScratchpadMesh(Renderable):
         no.set_data(data.normals)
         log('Upload no')
 
+        # Upload all UV layers as TexcoordN
+        for index in range(data.total_texcoords):
+            # TODO: Somehow use VertexBuffer constants for this instead of Texcoord{}
+            texcoord = vao.get_vertex_buffer('Texcoord{}'.format(index)) 
+            texcoord.set_data(data.texcoord(index))
+            log('Upload texcoord{}'.format(index))
+
+        # TODO: What happens when we *remove* a texcoord?
+        # That's not handled currently.
+
         indices = vao.get_index_buffer()
         indices.set_data(data.triangles)
         log('Upload indices')
