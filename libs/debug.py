@@ -32,7 +32,7 @@ if IS_DEBUG:
         
     def debug(*args):
         """Print to console while in debug mode"""
-        print(args)
+        print(*args)
 else:
     def init_log(event: str): pass
     def log(event: str): pass

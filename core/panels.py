@@ -7,7 +7,7 @@ from bgl import *
 from bpy.types import Panel
 
 from .engine import ScratchpadRenderEngine
-from ..lib.registry import autoregister
+from libs.registry import autoregister
 
 class BasePanel(Panel):
     bl_space_type = 'PROPERTIES'
@@ -22,7 +22,7 @@ class BasePanel(Panel):
 @autoregister
 class SCRATCHPAD_RENDER_PT_settings(BasePanel):
     """Parent panel for renderer settings"""
-    bl_label = 'Scratchpad Settings'
+    bl_label = 'Scratchpad'
 
     def draw(self, context):
         layout = self.layout
@@ -31,27 +31,13 @@ class SCRATCHPAD_RENDER_PT_settings(BasePanel):
         
         settings = context.scene.scratchpad
         # No controls at top level.
-        
-@autoregister
-class SCRATCHPAD_RENDER_PT_settings_viewport(BasePanel):
-    """Global viewport configurations"""
-    bl_label = 'Viewport'
-    bl_parent_id = 'SCRATCHPAD_RENDER_PT_settings'
 
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-        
-        settings = context.scene.scratchpad
-
-        col = layout.column(align=True)
-        col.prop(settings, 'clear_color')
-        # col.prop(settings, 'ambient_color') TODO:MIGRATE
+        col = layout.column()
+        col.label(text='TODO: Anything scene/render related')
 
 @autoregister
 class SCRATCHPAD_MATERIAL_PT_settings(BasePanel):
-    bl_label = 'Scratchpad Settings'
+    bl_label = 'Scratchpad'
     bl_context = 'material'
     
     @classmethod 
@@ -66,8 +52,7 @@ class SCRATCHPAD_MATERIAL_PT_settings(BasePanel):
 
         # col = layout.column()
         # col.label(text='TODO: Anything common?')
-        
-        layout.prop(mat, "diffuse_color")
+        # layout.prop(mat, "diffuse_color")
 
 @autoregister
 class SCRATCHPAD_MATERIAL_PT_settings_shader(BasePanel):
@@ -122,7 +107,7 @@ class SCRATCHPAD_MATERIAL_PT_settings_shader(BasePanel):
 @autoregister
 class SCRATCHPAD_LIGHT_PT_light(BasePanel):
     """Custom per-light settings editor for this render engine"""
-    bl_label = 'Light'
+    bl_label = 'Scratchpad'
     bl_context = 'data'
     
     @classmethod
@@ -134,13 +119,6 @@ class SCRATCHPAD_LIGHT_PT_light(BasePanel):
         light = context.light
         
         settings = context.light.scratchpad
-        
-        if self.bl_space_type == 'PROPERTIES':
-            layout.row().prop(light, 'type', expand=True)
-            layout.use_property_split = True
-        else:
-            layout.use_property_split = True
-            layout.row().prop(light, 'type')
         
         col = layout.column()
         col.prop(light, 'color')
@@ -226,9 +204,6 @@ class SCRATCHPAD_MATERIAL_PT_settings_dynamic(BasePanel):
     def draw_image_template(self, props, name, col):
         layout = self.layout
 
-        # Would need to be something that makes a new texture and assigns it automatically...
-        # Custom operator I guess?
-
         # TODO: Less magic way of getting the property name 
         # TODO: Better layout and more image settings (where applicable).
         # Would it make more sense to be a texture here so we can set wrap settings?
@@ -310,9 +285,6 @@ class SCRATCHPAD_MATERIAL_PT_settings_dynamic(BasePanel):
         elif not hasattr(mat, key):
             col.label(text='No additional properties for the current shader')
         else:
-            layout.separator()
-            col = layout.column(align=True)
-
             props = getattr(mat, key)
             # Annotations are used here because this is how we added *Property instances
             # TODO: Support grouping in some way 

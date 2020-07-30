@@ -3,9 +3,11 @@ import os
 import sys
 import unittest
 
-# Skip addon root to avoid mocking bpy/etc
-sys.path.append(os.path.join(os.path.dirname(__file__), '../addon/parsers'))
-from glsl.preprocessor import GLSLPreprocessor
+from unittest.mock import MagicMock, patch
+sys.modules['bgl'] = MagicMock()
+sys.modules['bpy'] = MagicMock()
+
+from shaders.glsl.preprocessor import GLSLPreprocessor
 
 FIXTURES = os.path.join(os.path.dirname(__file__), './fixtures/glsl')
 

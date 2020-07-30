@@ -10,33 +10,34 @@ bl_info = {
     'category': 'Render'
 }
 
+import os
+import sys
+
+# This is done to allow absolute imports from the root of this package.
+# TODO: Better solution. This lets us keep the same imports as we would 
+# while running through unittest.
+path = os.path.dirname(os.path.realpath(__file__))
+if path not in sys.path:
+    sys.path.append(path)
+
 if 'bpy' in locals():
     import importlib
-    importlib.reload(lib)
-    lib.registry.Registry.clear()
+    importlib.reload(libs)
+    libs.registry.Registry.clear()
     importlib.reload(shaders)
     importlib.reload(core)
 else:
     import bpy 
-    from . import lib
+    from . import libs
     from . import shaders
     from . import core
 
 import bpy
 
+from libs.registry import Registry
+
 def register():
-    lib.registry.Registry.register()
+    Registry.register()
 
 def unregister():
-    lib.registry.Registry.unregister()
-
-    # TODO: Move to Registry?
-    # Unregister dynamic-generated property groups 
-    if hasattr(bpy, 'scratchpad_dynamic_property_groups'):
-        for key, instance in bpy.scratchpad_dynamic_property_groups.items():
-            try:
-                bpy.utils.unregister_class(instance)
-            except: 
-                pass
-            
-        bpy.scratchpad_dynamic_property_groups = {}
+    Registry.unregister()

@@ -3,7 +3,7 @@ import bpy
 from bgl import *
 
 from .mesh_data import MeshData
-from .debug import init_log, log, op_log, debug, IS_DEBUG
+from libs.debug import init_log, log, op_log, debug, IS_DEBUG
 from .vao import (
     VAO,
     VertexBuffer,

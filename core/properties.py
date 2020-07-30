@@ -14,9 +14,9 @@ from bpy.props import (
 
 from bpy.types import PropertyGroup
 
-from .debug import debug
-from ..shaders import SUPPORTED_SHADERS
-from ..lib.registry import autoregister
+from shaders import SUPPORTED_SHADERS
+from libs.debug import debug
+from libs.registry import autoregister, Registry
 
 def force_shader_reload(self, context):
     """Callback when any of the shader filenames change"""
@@ -27,18 +27,12 @@ LOADERS = [(s[0], s[0], s[1].__doc__, '', i) for i, s in enumerate(SUPPORTED_SHA
 
 @autoregister
 class ScratchpadProperties(PropertyGroup):
-    clear_color: FloatVectorProperty(  
-        name='Clear Color',
-        subtype='COLOR',
-        default=(0.15, 0.15, 0.15),
-        min=0.0, max=1.0,
-        description='color picker'
-    )
-    
+    # TODO: Scene/render properties
+
     @classmethod
     def register(cls):
         bpy.types.Scene.scratchpad = PointerProperty(
-            name="Scratchpad Settings",
+            name="Scratchpad Scene Settings",
             type=cls
         )
         
@@ -249,13 +243,8 @@ def register_dynamic_property_group(class_name: str, base: PropertyGroup, proper
 
         # And so on as needed.
 
-    if not hasattr(bpy, 'scratchpad_dynamic_property_groups'):
-        bpy.scratchpad_dynamic_property_groups = {}
-
     # Unregister the previous instance if reloading
-    if class_name in bpy.scratchpad_dynamic_property_groups:
-        # delattr(bpy.types.Scene, class_name)
-        bpy.utils.unregister_class(bpy.scratchpad_dynamic_property_groups[class_name])
+    Registry.unregister_dynamic(class_name)
 
     # Instantiate a new BaseDynamicMaterialProperties instance container.
     # We add everything as property annotations for Blender 2.8+
@@ -264,10 +253,7 @@ def register_dynamic_property_group(class_name: str, base: PropertyGroup, proper
     instance.property_key = property_key
 
     debug('Register dynamic', instance)
-    bpy.utils.register_class(instance)
-
-    # track for unregister_dynamic_property_group
-    bpy.scratchpad_dynamic_property_groups[class_name] = instance
+    Registry.register_dynamic(class_name, instance)
 
 def unregister_dynamic_property_group(class_name: str):     
     """"Remove a PropertyGroup previously created by register_dynamic_property_group
@@ -275,23 +261,5 @@ def unregister_dynamic_property_group(class_name: str):
     Parameters:
         class_name (str): Class name to unregister
     """
-    if hasattr(bpy, 'scratchpad_dynamic_property_groups') and class_name in bpy.scratchpad_dynamic_property_groups:
-        instance = bpy.scratchpad_dynamic_property_groups[class_name]
-        debug('Unregister dynamic', instance)
-
-        try:
-            bpy.utils.unregister_class(instance)
-        except: 
-            pass
-        
-        del bpy.scratchpad_dynamic_property_groups[class_name]
-    else:
-        debug('Cannot find dynamic to unregister:', class_name)
-
-# def unregister_dynamic_property_groups():
-#     if hasattr(bpy, 'dynamic_property_groups'):
-#         for key, value in bpy.dynamic_property_groups.items():
-#             delattr(bpy.types.Scene, key) # TODO: Scope
-#             bpy.utils.unregister_class(value)
+    Registry.unregister_dynamic(class_name)
     
-#     bpy.dynamic_property_groups = {}

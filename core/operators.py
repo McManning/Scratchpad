@@ -2,7 +2,7 @@
 import bpy
 from bpy.types import Operator
 
-from ..lib.registry import autoregister
+from libs.registry import autoregister
 
 @autoregister
 class SCRATCHPAD_OT_reload_sources(Operator):

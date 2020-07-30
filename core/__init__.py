@@ -1,7 +1,6 @@
 
 if 'bpy' in locals():
     import importlib
-    importlib.reload(debug)
     importlib.reload(engine)
     importlib.reload(lights)
     importlib.reload(mesh_data)
@@ -11,7 +10,6 @@ if 'bpy' in locals():
     importlib.reload(renderables)
     importlib.reload(vao)
 else:
-    from . import debug
     from . import engine 
     from . import lights 
     from . import mesh_data
