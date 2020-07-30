@@ -17,5 +17,5 @@ import bpy
 SUPPORTED_SHADERS = [
     ('Builtin', fallback.FallbackShader),
     ('GLSL', glsl.shader.GLSLShader),
-    ('Maya OGSFX', ogsfx.OGSFXShader)
+    # ('Maya OGSFX', ogsfx.OGSFXShader)
 ]

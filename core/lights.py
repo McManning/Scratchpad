@@ -3,14 +3,6 @@ from bgl import *
 from mathutils import Vector
 from math import cos
 
-class SceneLighting:
-    """Current scene lighting information provided to shaders"""
-    def __init__(self):
-        self.ambient_color = (0, 0, 0)
-        self.main_light = None 
-        self.additional_lights = dict()
-
-
 class MainLight:
     """Primary directional light"""
     def __init__(self):

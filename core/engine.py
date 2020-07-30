@@ -2,22 +2,27 @@
 import uuid
 from collections import OrderedDict
 import bpy
-from bgl import *
 # from mathutils import Vector, Matrix, Quaternion
 
+from .driver import (
+    Graphics,
+    CommandBuffer,
+)
+
 from .lights import (
-    SceneLighting,
     MainLight,
     SpotLight,
     PointLight
 )
 
-from .renderables import (
-    ScratchpadMesh
+from .render_data import (
+    RenderData
 )
 
-from ..shaders.fallback import FallbackShader
-from ..shaders import SUPPORTED_SHADERS 
+from .renderables import (
+    ScratchpadMaterial,
+    ScratchpadMesh
+)
 
 from .properties import (
     register_dynamic_property_group, 
@@ -28,17 +33,23 @@ from .properties import (
 from .debug import debug
 from ..lib.registry import autoregister
 
+from shaders.fallback import FallbackShader
+from shaders import SUPPORTED_SHADERS 
+
+from libs.debug import debug
+from libs.registry import autoregister
+
 def sort_by_draw_order(arr):
-    """Sort a list of Material instances by Scratchpad draw priority
+    """Sort a list of ScratchpadMaterial instances by Scratchpad draw priority
     
     Parameters:
-        arr ({ bpy.types.Material, list(Renderable) }): Dictionary mapping a material     
+        arr ({ ScratchpadMaterial, list(Renderable) }): Dictionary mapping a material     
                                                         to Renderables that use it
     
     Returns:
-        list(bpy.types.Material)
+        list(ScratchpadMaterial)
     """
-    return OrderedDict(sorted(arr.items(), key=lambda m: m[0].scratchpad.priority))
+    return OrderedDict(sorted(arr.items(), key=lambda m: m[0].material.scratchpad.priority))
 
 def generate_unique_key() -> str:
     return 'scratchpad_dynamic_' + uuid.uuid4().hex
@@ -49,19 +60,14 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
     bl_label = "Scratchpad"
     bl_use_preview = True
 
+    # Statically available instance for use in render passes/etc 
+    fallback_shader = FallbackShader()
+
     # Panels that we don't register this engine with
     exclude_panels = {
         'VIEWLAYER_PT_filter',
         'VIEWLAYER_PT_layer_passes',
     }
-
-    # Mesh instances shared between render engines
-    # Maps a bpy.types.Mesh to a ScratchpadMesh.
-    # TODO: Unfortunately, I'm getting access violation crashes when toggling between 
-    # different modes (layout, editing, sculpting). Hard to trace. I'm *guessing* that
-    # GL isn't shared between them, because I'm also getting weird issues with every
-    # other VAO not working?
-    # meshes = dict()
 
     def __init__(self):
         """Called when a new render engine instance is created. 
@@ -69,11 +75,10 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
         Note that multiple instances can exist @ once, e.g. a viewport and final render
         """
         self.meshes = dict()
-        self.renderables = dict() # Material -> Renderable impl 
-        self.shaders = dict() # Material -> BaseShader impl
-        
-        self.lighting = SceneLighting()
-        self.lighting.main_light = MainLight()
+        self.materials = dict() # Material -> ScratchpadMaterial cache
+
+        self.render_data = RenderData()
+
 
         self.fallback_shader = FallbackShader()
 
@@ -119,7 +124,7 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
 
         # self.updated_meshes = dict()
         self.updated_renderables = dict()
-        self.updated_shaders = dict()
+        self.updated_materials = dict() # bpy.types.Material -> ScratchpadMaterial
         self.updated_additional_lights = dict()
         self.updated_geometries = []
 
@@ -145,14 +150,11 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
                 debug('Unhandled scene object type', obj.type)
         
         # Replace old aggregates of tracked scene data
-        # self.meshes = self.updated_meshes
-        self.shaders = self.updated_shaders
-        self.renderables = sort_by_draw_order(self.updated_renderables)
+        self.render_data.renderables = sort_by_draw_order(self.updated_renderables)
+        self.render_data.lights.additional_lights = self.updated_additional_lights
 
-        # self.lighting.ambient_color = context.scene.scratchpad.ambient_color TODO:MIGRATE
-        self.lighting.additional_lights = self.updated_additional_lights
-
-        self.prune_missing_meshes()
+        # Drop any materials no longer used
+        self.materials = self.updated_materials
 
     def update_mesh(self, obj, depsgraph):
         """Track a mesh still used in the scene and updated geometry on the GPU if needed
@@ -181,10 +183,6 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
         if rebuild_geometry:
             mesh.rebuild(obj.evaluated_get(depsgraph))
 
-    def prune_missing_meshes(self):
-        """Remove any meshes no longer present in the file"""
-        pass
-
     def update_material(self, mat, obj):
         """Track a material still used by an object in the scene
 
@@ -192,18 +190,25 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
             mat (bpy.types.Material)  
             obj (Renderable):           Renderable that uses the material
         """
-        # Aggregate Renderables under the Material
+        # Make sure there's a ScratchpadMaterial
+        if mat not in self.materials:
+            sm = ScratchpadMaterial()
+            sm.material = mat
+        else:
+            sm = self.materials[mat]
+
+        # Aggregate Renderables under the ScratchpadMaterial
         # In a perfect world, we'd iterate polygons and aggregate what specific
         # polygons are using what materials. But that's too slow to be practical.
-        if mat not in self.updated_renderables:
-            # TODO: Set instead? Would it be slower?
-            self.updated_renderables[mat] = [obj] 
+        if sm not in self.updated_renderables:
+            self.updated_renderables[sm] = [obj] 
         else:
-            self.updated_renderables[mat].append(obj)
+            self.updated_renderables[sm].append(obj)
 
-        # On first update of this Material also check for a Shader update
-        if mat not in self.updated_shaders:
-            self.update_material_shader(mat)
+        # On first update this frame - check shaders.
+        if mat not in self.updated_materials:
+            self.update_material_shader(sm)
+            self.updated_materials[mat] = sm
 
     def update_light(self, obj):
         """Track an updated light in the scene
@@ -227,7 +232,7 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
         Parameters:
             obj (bpy.types.Object)
         """
-        self.lighting.main_light.update(obj)
+        self.render_data.lighting.main_light.update(obj)
 
     def update_point_light(self, obj):
         """Track an updated point light in the scene
@@ -235,10 +240,11 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
         Parameters:
             obj (bpy.types.Object)
         """
-        if obj.name not in self.lighting.additional_lights:
+        additional_lights = self.render_data.lights.additional_lights
+        if obj.name not in additional_lights:
             light = PointLight()
         else:
-            light = self.lighting.additional_lights[obj.name]
+            light = additional_lights[obj.name]
         
         light.update(obj)
         self.updated_additional_lights[obj.name] = light
@@ -249,10 +255,11 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
         Parameters:
             obj (bpy.types.Object)
         """
-        if obj.name not in self.lighting.additional_lights:
+        additional_lights = self.render_data.lights.additional_lights
+        if obj.name not in additional_lights:
             light = SpotLight()
         else:
-            light = self.lighting.additional_lights[obj.name]
+            light = additional_lights[obj.name]
         
         light.update(obj)
         self.updated_additional_lights[obj.name] = light
@@ -262,12 +269,12 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
             the material and check if we should hot reload sources
 
         Parameters:
-            mat (bpy.types.Material): Parent material of the shader
+            mat (ScratchpadMaterial): Parent material of the shader
         """
         # scene_settings = context.scene.scratchpad # TODO: Unused. Needed anymore?
-        settings = mat.scratchpad
-        active_shader = self.shaders.get(mat, None)
-
+        settings = mat.material.scratchpad
+        active_shader = mat.shader
+        
         # Instantiate unique class keys for this material instance, if not already
         shader_group_key = settings.dynamic_shader_property_group_key
         if not shader_group_key:
@@ -307,7 +314,7 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
             active_shader.last_error = None
 
             # Push dynamic properties from the UI to the shader
-            props = getattr(mat, shader_group_key, None)
+            props = getattr(mat.material, shader_group_key, None)
             if props: active_shader.update_properties(props)
 
             needs_recompile = active_shader.needs_recompile()
@@ -338,7 +345,7 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
 
             # This needs to happen after compilation, in case we switch back 
             # to a shader format that we're already storing data for 
-            props = getattr(mat, material_group_key, None)
+            props = getattr(mat.material, material_group_key, None)
             if props: active_shader.update_material_properties(props)
                 
         except Exception as e:
@@ -347,23 +354,14 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
             settings.last_shader_error = str(e)
             active_shader.last_error = str(e)
 
-        self.updated_shaders[mat] = active_shader
-
-    # def update_shaders(self, context):
-    #     """Send updated user data to active shaders and check for reloads
+        mat.shader = active_shader
         
-    #     Parameters:
-    #         context (bpy.context) - Current context to update from
-    #     """
-        
-    #     for mat in self.shaders:
-    #         self.update_material_shader(context, mat)
-
-    def check_fallback_shader(self):
+    @staticmethod
+    def check_fallback_shader():
         """Make sure the fallback shader is compiled and ready to use"""
         try:
-            if not self.fallback_shader.is_compiled:
-                self.fallback_shader.compile()
+            if not ScratchpadRenderEngine.fallback_shader.is_compiled:
+                ScratchpadRenderEngine.fallback_shader.compile()
         except Exception as e:
             # show_message('Failed to compile fallback shader. Check console', 'Compile Error', 'ERROR')
             print('--Failed to compile fallback shader--')
@@ -406,38 +404,21 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
             depsgraph (bpy.types.Depsgraph)
         """
         scene = depsgraph.scene
-        # region = context.region
-        # region3d = context.region_data
-        # settings = scene.scratchpad
-        
-        # self.check_shader_reload(context)
-        
-        # viewport = [region.x, region.y, region.width, region.height]
-        
-        # view_matrix = region3d.view_matrix # transposed GL_MODELVIEW_MATRIX
-        # view_matrix_inv = view_matrix.inverted()
-        # cam_pos = view_matrix_inv * Vector((0.0, 0.0, 0.0))
-        # cam_dir = (view_matrix_inv * Vector((0.0, 0.0, -1.0))) - cam_pos        
-        
+        region3d = context.region_data
+
+        # Begin frame rendering
+        ScratchpadRenderEngine.check_fallback_shader()
         self.bind_display_space_shader(scene)
-        self.check_fallback_shader()
 
-        glEnable(GL_DEPTH_TEST)
-        
-        # glEnable(GL_BLEND)
-        # glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
+        # Camera Loop 
+        self.render_data.camera.view_matrix = region3d.view_matrix
+        self.render_data.camera.projection_matrix = region3d.window_matrix
 
-        clear_color = scene.scratchpad.clear_color
-        glClearColor(clear_color[0], clear_color[1], clear_color[2], 1.0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        
-        # TODO: Other draw passes (shadow, depth, whatever) would happen here in some form. 
-        for mat in self.renderables:
-            self.draw_pass(context, mat)
-        
-        # for mesh in self.meshes.values():
-        #     self.shader.set_object_matrices(mesh.model_matrix)
-        #     mesh.draw(self.shader)
+        Graphics.enable_features(depth_test = True)
+        Graphics.clear_render_target(
+            clear_depth = True, 
+            clear_color = True, 
+            background_color = scene.world.color
+        )
 
         self.unbind_display_space_shader()
-        # glDisable(GL_BLEND)

@@ -10,9 +10,10 @@ from .vao import (
 )
 
 class ScratchpadMaterial:
+    """Bridge between a bpy.types.Material and other Scratchpad-specific data"""
     def __init__(self):
+        self.material = None # bpy.types.Material
         self.shader = None # BaseShader impl
-        self.renderables = {} # Set of Renderables with this material
 
 class Renderable:
     def draw(self, shader):
@@ -206,7 +207,7 @@ class ScratchpadMesh(Renderable):
         # Swap backbuffer with the active VAO 
         if self.is_backbuffer_ready:
             self.is_backbuffer_ready = False
-            self.rebuild_on_render(shader)
+            self.rebuild_on_render_unsafe(shader)
 
             # TODO: Backbuffer swap is unnecessary here (since we're
             # creating and filling and immediately swapping in one whole step)
@@ -225,8 +226,10 @@ class ScratchpadMesh(Renderable):
 
         vao.bind(shader.program)
 
+        shader.set_object_matrices(self.model_matrix)
+
         # TODO: Texture stuff
-        
+
         if not IS_DEBUG:
             # No validation check, assume stable
             glDrawElements(GL_TRIANGLES, self.vao.total_indices, GL_UNSIGNED_INT, 0)
