@@ -30,8 +30,11 @@ from .properties import (
     BaseDynamicMaterialProperties
 )
 
-from .debug import debug
-from ..lib.registry import autoregister
+from .passes import (
+    MainLightShadowCasterPass,
+    AdditionalLightsShadowCasterPass,
+    DrawObjectsPass
+)
 
 from shaders.fallback import FallbackShader
 from shaders import SUPPORTED_SHADERS 
@@ -67,6 +70,11 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
     exclude_panels = {
         'VIEWLAYER_PT_filter',
         'VIEWLAYER_PT_layer_passes',
+        'RENDER_PT_freestyle',
+        'RENDER_PT_simplify',
+        'DATA_PT_vertex_colors', # TODO: Support.
+        'DATA_PT_preview', # TODO: Reimplement once preview viewports can be supported
+        
     }
 
     def __init__(self):
@@ -79,13 +87,36 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
 
         self.render_data = RenderData()
 
+        self.passes = [
+            MainLightShadowCasterPass(),
+            AdditionalLightsShadowCasterPass(),
+            DrawObjectsPass()
+        ]
 
-        self.fallback_shader = FallbackShader()
+        self.setup_passes()
 
     # When the render engine instance is destroy, this is called. Clean up any
     # render engine data here, for example stopping running render threads.
     def __del__(self):
+        self.cleanup_passes()
         pass
+
+    def setup_passes(self):
+        """Execute setup() on all registered render passes"""
+        for p in self.passes:
+            p.setup()
+
+    def cleanup_passes(self):
+        """Execute cleanup() on all registered render passes"""
+        for p in self.passes:
+            p.cleanup()
+
+    def configure_passes(self):
+        """Execute configure() on all registered render passes"""
+        # TODO: Configure with what? Registered dynamic properties per-pass?
+        pass
+        # for p in self.passes:
+        #     p.configure(???)
 
     def render(self, depsgraph):
         """Handle final render (F12) and material preview window renders"""
@@ -367,35 +398,6 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
             print('--Failed to compile fallback shader--')
             print(e)
 
-    def draw_pass(self, context, mat):
-        """Draw Renderables with the given Material
-
-        Parameters:
-            context (bpy.context):      Current draw context
-            mat (bpy.types.Material):   Material to draw with
-        """
-        region3d = context.region_data
-        shader = self.shaders[mat]
-        renderables = self.renderables[mat]
-
-        if shader.last_error:
-            shader = self.fallback_shader
-
-        shader.bind('TODO: Pass names! (actually techniques)')
-        shader.set_camera_matrices(
-            region3d.view_matrix,
-            region3d.window_matrix
-        )
-        
-        shader.set_lighting(self.lighting)
-
-        # Render everything in the scene with this material
-        for r in renderables:
-            shader.set_object_matrices(r.model_matrix)
-            r.draw(shader)
-
-        shader.unbind()
-
     def view_draw(self, context, depsgraph):
         """Called whenever Blender redraws the 3D viewport
         
@@ -421,4 +423,9 @@ class ScratchpadRenderEngine(bpy.types.RenderEngine):
             background_color = scene.world.color
         )
 
+        # Run draw passes
+        for p in self.passes:
+            p.execute(self.render_data)
+        
+        # End frame rendering
         self.unbind_display_space_shader()
