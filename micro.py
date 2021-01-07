@@ -10,6 +10,18 @@ Features:
 - Single directional light information as uniforms `_MainLightDirection` and `_MainLightColor`
 - Per-vertex inputs `Position` and `Normal`
 """
+
+bl_info = {
+    'name': 'Foo',
+    'description': 'Micro GLSL Render Engine',
+    'author': 'Chase McManning',
+    'version': (0, 1, 0),
+    'blender': (2, 82, 0),
+    'doc_url': 'https://github.com/McManning/Scratchpad/wiki',
+    'tracker_url': 'https://github.com/McManning/Scratchpad/issues',
+    'category': 'Render'
+}
+
 import os
 import bpy
 import numpy as np
@@ -53,10 +65,10 @@ out VS_OUT {
 void main()
 {
     gl_Position = ModelViewProjectionMatrix * vec4(Position, 1.0);
-    
+
     vec3 positionWS = (ModelMatrix * vec4(Position, 1.0)).xyz;
     vec3 normalWS = (ModelMatrix * vec4(Normal, 0)).xyz;
-    
+
     OUT.positionWS = positionWS;
     OUT.normalWS = normalWS;
 }
@@ -69,7 +81,7 @@ uniform mat4 CameraMatrix;
 
 layout (location = 0) out vec4 FragColor;
 
-in VS_OUT { 
+in VS_OUT {
     vec3 positionWS;
     vec3 normalWS;
 } IN;
@@ -80,11 +92,11 @@ void main()
 
     vec3 eye = cameraPositionWS - IN.positionWS;
     float ndl = clamp(dot(IN.normalWS, normalize(eye)), 0.0, 1.0);
-    
+
     vec3 inner = vec3(0.61, 0.54, 0.52);
     vec3 outer = vec3(0.27, 0.19, 0.18);
     vec3 highlight = vec3(0.98, 0.95, 0.92);
-    
+
     FragColor = vec4(mix(outer, mix(inner, highlight, ndl * 0.25), ndl * 0.75), 1);
 }
 '''
@@ -103,7 +115,7 @@ class LinkError(Exception):
     pass
 
 def compile_glsl(src: str, stage_flag: int) -> int:
-    shader = glCreateShader(type_flag)
+    shader = glCreateShader(stage_flag)
     glShaderSource(shader, src)
     glCompileShader(shader)
 
@@ -130,7 +142,7 @@ def compile_glsl(src: str, stage_flag: int) -> int:
         stage = 'Tessellation Evaluation'
     elif stage_flag == GL_GEOMETRY_SHADER:
         stage = 'Geometry'
-    
+
     # Reconstruct byte data into a string
     err = ''.join(chr(infoLog[i]) for i in range(length[0]))
     raise CompileError(stage + ' Shader Error:\n' + err)
@@ -146,18 +158,18 @@ class Shader:
     def update_settings(self, settings):
         if not os.path.isfile(settings.vert_filename):
             raise FileNotFoundError('Missing required vertex shader')
-            
+
         if not os.path.isfile(settings.frag_filename):
             raise FileNotFoundError('Missing required fragment shader')
-        
-        self.stages = { 
+
+        self.stages = {
             'vs': settings.vert_filename,
             'fs': settings.frag_filename,
-            'tcs': settings.tesc_filename, 
+            'tcs': settings.tesc_filename,
             'tes': settings.tese_filename,
             'gs': settings.geom_filename
         }
-        
+
         self.monitored_files = [f for f in self.stages.values() if f]
         # We keep prev_mtimes - in case this was called with the same files
 
@@ -176,15 +188,15 @@ class Shader:
     def recompile(self):
         with open(self.vert) as f:
             vs = f.read()
-        
+
         with open(self.frag) as f:
             fs = f.read()
-        
+
         gs = None
         if (self.geom):
             with open(self.geom) as f:
                 gs = f.read()
-                
+
         self.compile_from_strings(vs, fs, tcs, tes, gs)
         self.prev_mtimes = self.mtimes()
 
@@ -201,7 +213,7 @@ class Shader:
         if tcs: glAttachShader(program, tcs_compiled)
         if tes: glAttachShader(program, tes_compiled)
         if gs: glAttachShader(program, gs_compiled)
-            
+
         glLinkProgram(program)
 
         # Cleanup shaders
@@ -218,23 +230,23 @@ class Shader:
         # If not okay, read the error from GL logs and report
         if link_ok[0] != True:
             self.program = None
-            
+
             bufferSize = 1024
             length = Buffer(GL_INT, 1)
             infoLog = Buffer(GL_BYTE, [bufferSize])
             glGetProgramInfoLog(program, bufferSize, length, infoLog)
-            
+
             err = ''.join(chr(infoLog[i]) for i in range(length[0]))
             raise LinkError(err)
-            
+
         self.program = program
-    
+
     def bind(self):
         glUseProgram(self.program)
-        
+
     def unbind(self):
         pass
-        
+
     def set_mat4(self, uniform: str, mat):
         location = glGetUniformLocation(self.program, uniform)
         if location < 0: return # Skip uniforms that were optimized out for being unused
@@ -249,14 +261,14 @@ class Shader:
 
         buffer = Buffer(GL_FLOAT, len(arr), arr)
         glUniform3fv(location, len(arr), buffer)
-        
+
     def set_vec4_array(self, uniform: str, arr):
         location = glGetUniformLocation(self.program, uniform)
         if location < 0: return
 
         buffer = Buffer(GL_FLOAT, len(arr), arr)
         glUniform4fv(location, len(arr), buffer)
-    
+
     def set_int(self, uniform: str, value: int):
         location = glGetUniformLocation(self.program, uniform)
         if location < 0: return
@@ -268,13 +280,13 @@ class Shader:
         if location < 0: return
 
         glUniform3f(location, value[0], value[1], value[2])
-        
+
     def set_vec4(self, uniform: str, value):
         location = glGetUniformLocation(self.program, uniform)
         if location < 0: return
 
         glUniform4f(location, value[0], value[1], value[2], value[3])
-        
+
     def set_vertex_attribute(self, name: str, stride: int):
         """Enable a vertex attrib array and set the pointer for GL_ARRAY_BUFFER reads"""
         location = glGetAttribLocation(self.program, name)
@@ -296,7 +308,7 @@ class Mesh:
         EBO = Buffer(GL_INT, 1)
         glGenBuffers(1, EBO)
         self.EBO = EBO[0]
-        
+
         self.is_dirty = True
         self.indices_size = 0
 
@@ -314,31 +326,31 @@ class Mesh:
         # Refresh triangles on the mesh
         # TODO: Is this necessary with the eval mesh?
         mesh.calc_loop_triangles()
-        
+
         # Fast copy vertex data / triangle indices from the mesh into buffers
         # Reference: https://blog.michelanders.nl/2016/02/copying-vertices-to-numpy-arrays-in_4.html
         vertices = [0]*len(mesh.vertices) * 3
         mesh.vertices.foreach_get('co', vertices)
         self.vertices = Buffer(GL_FLOAT, len(vertices), vertices)
-        
+
         normals = [0]*len(mesh.vertices) * 3
         mesh.vertices.foreach_get('normal', normals)
         self.normals = Buffer(GL_FLOAT, len(normals), normals)
-        
+
         indices = [0]*len(mesh.loop_triangles) * 3
         mesh.loop_triangles.foreach_get('vertices', indices)
         self.indices = Buffer(GL_INT, len(indices), indices)
-        
+
         eval_obj.to_mesh_clear()
 
         # let the render loop set the new buffer data into the VAO,
-        # otherwise we may run into access violation issues. 
+        # otherwise we may run into access violation issues.
         self.is_dirty = True
 
 
     def rebuild_vbos(self, shader: Shader):
         """Upload new vertex buffer data to the GPU
-        
+
         This method needs to be called within the render thread.
         """
         # Bind the VAO so we can upload new buffers
@@ -391,12 +403,12 @@ class FooRenderEngine(bpy.types.RenderEngine):
     bl_use_preview = True
 
     def __init__(self):
-        """Called when a new render engine instance is created. 
+        """Called when a new render engine instance is created.
 
         Note that multiple instances can exist @ once, e.g. a viewport and final render
         """
         self.meshes = dict()
-        
+
         self.light_direction = (0, 0, 1, 0)
         self.light_color = (1, 1, 1, 1)
 
@@ -411,7 +423,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
         except Exception as e:
             print('--Failed to compile default shader--')
             print(e)
-    
+
     def __del__(self):
         """Clean up render engine data, e.g. stopping running render threads"""
         pass
@@ -430,29 +442,29 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
         self.updated_meshes = dict()
         self.updated_geometries = []
-        
+
         # Check for any updated mesh geometry to rebuild GPU buffers
         for update in depsgraph.updates:
             name = update.id.name
             if type(update.id) == bpy.types.Object:
                 if update.is_updated_geometry and name in self.meshes:
                     self.updated_geometries.append(name)
-        
+
         # Aggregate everything visible in the scene that we care about
         for obj in scene.objects:
             if not obj.visible_get():
                 continue
-            
+
             if obj.type == 'MESH':
                 self.update_mesh(obj, depsgraph)
             elif obj.type == 'LIGHT' and obj.data.type == 'SUN':
                 self.update_light(obj)
-                
+
         self.meshes = self.updated_meshes
-    
+
     def update_mesh(self, obj, depsgraph):
         """Update mesh data for next render"""
-        # Get/create the mesh instance and determine if we need 
+        # Get/create the mesh instance and determine if we need
         # to reupload geometry to the GPU for this mesh
         rebuild_geometry = obj.name in self.updated_geometries
         if obj.name not in self.meshes:
@@ -466,13 +478,13 @@ class FooRenderEngine(bpy.types.RenderEngine):
         # Copy updated vertex data to the GPU when modified
         if rebuild_geometry:
             mesh.rebuild(obj.evaluated_get(depsgraph), self.shader)
-        
+
         self.updated_meshes[obj.name] = mesh
-        
+
     def update_light(self, obj):
         """Update main (sun) light data for the next render"""
-        light_type = obj.data.type 
-        
+        light_type = obj.data.type
+
         direction = obj.matrix_world.to_quaternion() @ Vector((0, 0, 1))
         color = obj.data.color
 
@@ -508,16 +520,16 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
     def view_draw(self, context, depsgraph):
         """Called whenever Blender redraws the 3D viewport"""
-        if not self.shader: return 
-        
+        if not self.shader: return
+
         scene = depsgraph.scene
         region = context.region
         region3d = context.region_data
         settings = scene.foo
-        
+
         self.bind_display_space_shader(scene)
         self.shader.bind()
-        
+
         # Set up MVP matrices
         self.shader.set_mat4("ViewMatrix", region3d.view_matrix.transposed())
         self.shader.set_mat4("ProjectionMatrix", region3d.window_matrix.transposed())
@@ -528,11 +540,11 @@ class FooRenderEngine(bpy.types.RenderEngine):
         self.shader.set_vec4("_MainLightColor", self.light_color)
 
         glEnable(GL_DEPTH_TEST)
-        
+
         clear_color = scene.foo.clear_color
         glClearColor(clear_color[0], clear_color[1], clear_color[2], 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        
+
         for mesh in self.meshes.values():
             mv = region3d.view_matrix @ mesh.model_matrix
             mvp = region3d.window_matrix @ mv
@@ -541,7 +553,7 @@ class FooRenderEngine(bpy.types.RenderEngine):
             self.shader.set_mat4("ModelMatrix", mesh.model_matrix.transposed())
             self.shader.set_mat4("ModelViewMatrix", mv.transposed())
             self.shader.set_mat4("ModelViewProjectionMatrix", mvp.transposed())
-            
+
             # Draw the mesh itself
             mesh.draw(self.shader)
 
@@ -566,7 +578,7 @@ def force_shader_reload(self, context):
 class FooRendererSettings(PropertyGroup):
     """Collection of user configurable settings for the renderer"""
 
-    # Shader source files 
+    # Shader source files
     vert_filename: StringProperty(
         name='Vertex Shader',
         description='Source file path',
@@ -574,7 +586,7 @@ class FooRendererSettings(PropertyGroup):
         subtype='FILE_PATH',
         update=force_shader_reload
     )
-    
+
     frag_filename: StringProperty(
         name='Fragment Shader',
         description='Source file path',
@@ -582,7 +594,7 @@ class FooRendererSettings(PropertyGroup):
         subtype='FILE_PATH',
         update=force_shader_reload
     )
-    
+
     tesc_filename: StringProperty(
         name='Tess Control Shader',
         description='Source file path',
@@ -590,7 +602,7 @@ class FooRendererSettings(PropertyGroup):
         subtype='FILE_PATH',
         update=force_shader_reload
     )
-    
+
     tese_filename: StringProperty(
         name='Tess Evaluation Shader',
         description='Source file path',
@@ -598,7 +610,7 @@ class FooRendererSettings(PropertyGroup):
         subtype='FILE_PATH',
         update=force_shader_reload
     )
-    
+
     geom_filename: StringProperty(
         name='Geometry Shader',
         description='Source file path',
@@ -606,21 +618,21 @@ class FooRendererSettings(PropertyGroup):
         subtype='FILE_PATH',
         update=force_shader_reload
     )
-    
+
     live_reload: BoolProperty(
         name='Live Reload',
         description='Reload source files on change',
         default=True
     )
-    
-    clear_color: FloatVectorProperty(  
+
+    clear_color: FloatVectorProperty(
         name='Clear Color',
         subtype='COLOR',
         default=(0.15, 0.15, 0.15),
         min=0.0, max=1.0,
         description='Background color of the scene'
     )
-    
+
     force_reload: BoolProperty(
         name='Force Reload'
     )
@@ -628,7 +640,7 @@ class FooRendererSettings(PropertyGroup):
     last_shader_error: StringProperty(
         name='Last Shader Error'
     )
-    
+
     @classmethod
     def register(cls):
         bpy.types.Scene.foo = PointerProperty(
@@ -636,34 +648,34 @@ class FooRendererSettings(PropertyGroup):
             description='',
             type=cls
         )
-        
+
     @classmethod
     def unregister(cls):
         del bpy.types.Scene.foo
 
 class FooLightSettings(PropertyGroup):
-    color: FloatVectorProperty(  
+    color: FloatVectorProperty(
         name='Color',
         subtype='COLOR',
         default=(0.15, 0.15, 0.15),
         min=0.0, max=1.0,
         description='color picker'
     )
-    
+
     distance: FloatProperty(
         name='Range',
         default=1.0,
         description='How far light is emitted from the center of the object',
         min=0.000001
     )
-    
+
     intensity: FloatProperty(
         name='Intensity',
         default=1.0,
         description='Brightness of the light',
         min=0.0
     )
-    
+
     @classmethod
     def register(cls):
         bpy.types.Light.foo = PointerProperty(
@@ -671,11 +683,11 @@ class FooLightSettings(PropertyGroup):
             description='',
             type=cls
         )
-    
+
     @classmethod
     def unregister(cls):
         del bpy.types.Light.foo
-    
+
 #endregion Settings
 
 #region Operators
@@ -687,7 +699,7 @@ class FooReloadSourcesOperator(bpy.types.Operator):
 
     def invoke(self, context, event):
         context.scene.foo.force_reload = True
-        
+
         return {'FINISHED'}
 
 #endregion Operators
@@ -712,7 +724,7 @@ class FOO_RENDER_PT_settings(BasePanel):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
-        
+
         settings = context.scene.foo
         # No controls at top level.
 
@@ -725,7 +737,7 @@ class FOO_RENDER_PT_settings_viewport(BasePanel):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
-        
+
         settings = context.scene.foo
 
         col = layout.column(align=True)
@@ -740,7 +752,7 @@ class FOO_RENDER_PT_settings_sources(BasePanel):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
-        
+
         settings = context.scene.foo
 
         col = layout.column(align=True)
@@ -749,14 +761,14 @@ class FOO_RENDER_PT_settings_sources(BasePanel):
         col.prop(settings, 'tesc_filename')
         col.prop(settings, 'tese_filename')
         col.prop(settings, 'geom_filename')
-        
+
         layout.separator()
-         
+
         col = layout.column(align=True)
         row = col.row(align=True)
         row.prop(settings, "live_reload", text="Live Reload")
         row.operator("foo.reload_sources", text = "Reload")
-        
+
         # Alert message on compile error
         col = layout.column(align=True)
         col.alert = True
@@ -766,12 +778,12 @@ class FOO_RENDER_PT_settings_sources(BasePanel):
             lines = settings.last_shader_error.split('\n')
             for line in lines:
                 col.label(text=line)
- 
+
 class FOO_LIGHT_PT_light(BasePanel):
     """Custom per-light settings editor for this render engine"""
     bl_label = 'Light'
     bl_context = 'data'
-    
+
     @classmethod
     def poll(cls, context):
         return context.light and BasePanel.poll(context)
@@ -779,12 +791,12 @@ class FOO_LIGHT_PT_light(BasePanel):
     def draw(self, context):
         layout = self.layout
         light = context.light
-        
+
         settings = context.light.foo
-        
+
         # Only a primary sun light is supported
         if light.type != 'SUN':
-            return 
+            return
 
         if self.bl_space_type == 'PROPERTIES':
             layout.row().prop(light, 'type', expand=True)
@@ -792,10 +804,10 @@ class FOO_LIGHT_PT_light(BasePanel):
         else:
             layout.use_property_split = True
             layout.row().prop(light, 'type')
-        
+
         col = layout.column()
         col.prop(light, 'color')
-        
+
         col.separator()
         col.prop(settings, 'distance')
         col.prop(settings, 'intensity')
@@ -807,14 +819,14 @@ class FOO_LIGHT_PT_light(BasePanel):
 # Classes to (un)register as part of this addon
 CLASSLIST = (
     FooRenderEngine,
-    
+
     # Operators
     FooReloadSourcesOperator,
-    
+
     # Settings
     FooRendererSettings,
     FooLightSettings,
-    
+
     # Renderer panels
     FOO_RENDER_PT_settings,
     FOO_RENDER_PT_settings_viewport,
