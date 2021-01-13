@@ -23,6 +23,7 @@ bl_info = {
 }
 
 import os
+import threading
 import bpy
 import numpy as np
 import gpu
@@ -45,6 +46,12 @@ from bpy.types import (
     PropertyGroup,
     Panel
 )
+
+# Constants not exported from bgl for some reason despite
+# being documented in https://docs.blender.org/api/current/bgl.html
+GL_TESS_EVALUATION_SHADER = 36487
+GL_TESS_CONTROL_SHADER = 36488
+GL_PATCHES = 14
 
 #region Fallback Shaders
 
@@ -101,9 +108,6 @@ void main()
 }
 '''
 
-# Skip geometry shader for fallback
-GS_FALLBACK = None
-
 #endregion Fallback Shaders
 
 #region Render Engine
@@ -114,123 +118,147 @@ class CompileError(Exception):
 class LinkError(Exception):
     pass
 
-def compile_glsl(src: str, stage_flag: int) -> int:
-    shader = glCreateShader(stage_flag)
-    glShaderSource(shader, src)
-    glCompileShader(shader)
+class BaseShader:
+    """Encapsulate shader compilation and configuration
 
-    #Check for compile errors
-    shader_ok = Buffer(GL_INT, 1)
-    glGetShaderiv(shader, GL_COMPILE_STATUS, shader_ok)
+    Attributes:
+        program (int): Shader program ID or None if not loaded
+        last_error (str): Last shader compilation error
+        sources (dict): Dictionary mapping GL stage constant to shader source string
+        needs_recompile (bool): Should the render thread try to recompile shader sources
+    """
 
-    if shader_ok[0] == True:
-        return shader
+    # Supported GLSL stages
+    STAGES = [
+        GL_VERTEX_SHADER,
+        GL_TESS_EVALUATION_SHADER,
+        GL_TESS_CONTROL_SHADER,
+        GL_GEOMETRY_SHADER,
+        GL_FRAGMENT_SHADER
+    ]
 
-    # If not okay, read the error from GL logs
-    bufferSize = 1024
-    length = Buffer(GL_INT, 1)
-    infoLog = Buffer(GL_BYTE, [bufferSize])
-    glGetShaderInfoLog(shader, bufferSize, length, infoLog)
-
-    if stage_flag == GL_VERTEX_SHADER:
-        stage = 'Vertex'
-    elif stage_flag == GL_FRAGMENT_SHADER:
-        stage = 'Fragment'
-    elif stage_flag == GL_TESS_CONTROL_SHADER:
-        stage = 'Tessellation Control'
-    elif stage_flag == GL_TESS_EVALUATION_SHADER:
-        stage = 'Tessellation Evaluation'
-    elif stage_flag == GL_GEOMETRY_SHADER:
-        stage = 'Geometry'
-
-    # Reconstruct byte data into a string
-    err = ''.join(chr(infoLog[i]) for i in range(length[0]))
-    raise CompileError(stage + ' Shader Error:\n' + err)
-
-class Shader:
-    """Encapsulate shader compilation and configuration"""
     def __init__(self):
         self.program = None
-        self.prev_mtimes = []
-        self.monitored_files = []
-        self.stages = {}
+        self.last_error = ''
+        self.sources = dict.fromkeys(self.STAGES, None)
+        self.needs_recompile = True
 
     def update_settings(self, settings):
-        if not os.path.isfile(settings.vert_filename):
-            raise FileNotFoundError('Missing required vertex shader')
+        """Update current settings and check if a recompile is necessary.
 
-        if not os.path.isfile(settings.frag_filename):
-            raise FileNotFoundError('Missing required fragment shader')
+        This method is called from the main thread. Do not perform any actual
+        shader compilation here - instead flag it for a recompile on the
+        render thread by setting `self.needs_recompile` to true.
 
-        self.stages = {
-            'vs': settings.vert_filename,
-            'fs': settings.frag_filename,
-            'tcs': settings.tesc_filename,
-            'tes': settings.tese_filename,
-            'gs': settings.geom_filename
-        }
-
-        self.monitored_files = [f for f in self.stages.values() if f]
-        # We keep prev_mtimes - in case this was called with the same files
-
-    def compile_from_fallback(self):
-        self.prev_mtimes = []
-        self.compile_from_strings(VS_FALLBACK, FS_FALLBACK)
-
-    def mtimes(self):
-        """Aggregate file modication times from sources"""
-        return [os.stat(file).st_mtime for file in self.monitored_files]
-
-    def mtimes_changed(self) -> bool:
-        """Check if the file update time has changed in any of the source files"""
-        return self.prev_mtimes != self.mtimes()
+        Args:
+            settings (FooRendererSettings): Current settings to read
+        """
+        pass
 
     def recompile(self):
-        with open(self.vert) as f:
-            vs = f.read()
+        """Recompile shaders from sources, setting `self.last_error` if anything goes wrong.
 
-        with open(self.frag) as f:
-            fs = f.read()
+        This *MUST* be called from within the render thread to safely
+        compile shaders within the RenderEngine's GL context.
+        """
 
-        gs = None
-        if (self.geom):
-            with open(self.geom) as f:
-                gs = f.read()
+        try:
+            self.program = self.compile_program()
+            self.last_error = ''
+        except Exception as err:
+            self.last_error = str(err)
+            self.program = None
 
-        self.compile_from_strings(vs, fs, tcs, tes, gs)
-        self.prev_mtimes = self.mtimes()
+    @property
+    def has_tessellation(self) -> bool:
+        """Does this shader perform tessellation"""
+        return self.sources[GL_TESS_CONTROL_SHADER] is not None and self.sources[GL_TESS_EVALUATION_SHADER] is not None
 
-    def compile_from_strings(self, vs: str, fs: str, tcs: str = None, tes: str = None, gs: str = None):
-        vs_compiled = compile_glsl(vs, GL_VERTEX_SHADER)
-        fs_compiled = compile_glsl(fs, GL_FRAGMENT_SHADER)
-        tcs_compiled = compile_glsl(gs, GL_TESS_CONTROL_SHADER) if tcs else None
-        tes_compiled = compile_glsl(gs, GL_TESS_EVALUATION_SHADER) if tes else None
-        gs_compiled = compile_glsl(gs, GL_GEOMETRY_SHADER) if gs else None
+    def compile_stage(self, stage: int):
+        """Compile a specific shader stage from `self.sources`
+
+        Args:
+            stage (int): GL stage (e.g. `GL_VERTEX_SHADER`)
+
+        Returns:
+            int|None: Compiled Shader ID or None if the stage does not have a source
+
+        Raises:
+            CompileError: If GL fails to compile the stage
+        """
+        if not self.sources[stage]: # Skip stage
+            return None
+
+        shader = glCreateShader(stage)
+        glShaderSource(shader, self.sources[stage])
+        glCompileShader(shader)
+
+        #Check for compile errors
+        shader_ok = Buffer(GL_INT, 1)
+        glGetShaderiv(shader, GL_COMPILE_STATUS, shader_ok)
+
+        if shader_ok[0] == True:
+            return shader
+
+        # If not okay, read the error from GL logs
+        bufferSize = 1024
+        length = Buffer(GL_INT, 1)
+        infoLog = Buffer(GL_BYTE, [bufferSize])
+        glGetShaderInfoLog(shader, bufferSize, length, infoLog)
+
+        if stage == GL_VERTEX_SHADER:
+            stage_name = 'Vertex'
+        elif stage == GL_FRAGMENT_SHADER:
+            stage_name = 'Fragment'
+        elif stage == GL_TESS_CONTROL_SHADER:
+            stage_name = 'Tessellation Control'
+        elif stage == GL_TESS_EVALUATION_SHADER:
+            stage_name = 'Tessellation Evaluation'
+        elif stage == GL_GEOMETRY_SHADER:
+            stage_name = 'Geometry'
+
+        # Reconstruct byte data into a string
+        err = ''.join(chr(infoLog[i]) for i in range(length[0]))
+        raise CompileError(stage_name + ' Shader Error:\n' + err)
+
+    def compile_program(self):
+        """Create a GL shader program from current `self.sources`
+
+        Returns:
+            int: GL program ID
+
+        Raises:
+            CompileError: If one or more stages fail to compile
+            LinkError: If the program fails to link stages
+        """
+        vs = self.compile_stage(GL_VERTEX_SHADER)
+        fs = self.compile_stage(GL_FRAGMENT_SHADER)
+        tcs = self.compile_stage(GL_TESS_CONTROL_SHADER)
+        tes = self.compile_stage(GL_TESS_EVALUATION_SHADER)
+        gs = self.compile_stage(GL_GEOMETRY_SHADER)
 
         program = glCreateProgram()
-        glAttachShader(program, vs_compiled)
-        glAttachShader(program, fs_compiled)
-        if tcs: glAttachShader(program, tcs_compiled)
-        if tes: glAttachShader(program, tes_compiled)
-        if gs: glAttachShader(program, gs_compiled)
+        glAttachShader(program, vs)
+        glAttachShader(program, fs)
+        if tcs: glAttachShader(program, tcs)
+        if tes: glAttachShader(program, tes)
+        if gs: glAttachShader(program, gs)
 
         glLinkProgram(program)
 
         # Cleanup shaders
-        glDeleteShader(vs_compiled)
-        glDeleteShader(fs_compiled)
-        if tcs: glDeleteShader(tcs_compiled)
-        if tes: glDeleteShader(tes_compiled)
-        if gs: glDeleteShader(gs_compiled)
+        glDeleteShader(vs)
+        glDeleteShader(fs)
+        if tcs: glDeleteShader(tcs)
+        if tes: glDeleteShader(tes)
+        if gs: glDeleteShader(gs)
 
-        #Check for link errors
+        # Check for link errors
         link_ok = Buffer(GL_INT, 1)
         glGetProgramiv(program, GL_LINK_STATUS, link_ok)
 
         # If not okay, read the error from GL logs and report
         if link_ok[0] != True:
-            self.program = None
-
             bufferSize = 1024
             length = Buffer(GL_INT, 1)
             infoLog = Buffer(GL_BYTE, [bufferSize])
@@ -239,12 +267,26 @@ class Shader:
             err = ''.join(chr(infoLog[i]) for i in range(length[0]))
             raise LinkError(err)
 
-        self.program = program
+        return program
 
-    def bind(self):
+    def bind(self) -> bool:
+        """Bind the shader for use and check if a recompile is necessary.
+
+        Returns:
+            bool: False if the shader could not be bound (e.g. due to a failed recompile)
+        """
+        if self.needs_recompile:
+            self.recompile()
+            self.needs_recompile = False
+
+        if not self.program:
+            return False
+
         glUseProgram(self.program)
+        return True
 
     def unbind(self):
+        """Perform cleanup necessary for this shader"""
         pass
 
     def set_mat4(self, uniform: str, mat):
@@ -275,6 +317,12 @@ class Shader:
 
         glUniform1i(location, value)
 
+    def set_float(self, uniform: str, value: float):
+        location = glGetUniformLocation(self.program, uniform)
+        if location < 0: return
+
+        glUniform1f(location, value)
+
     def set_vec3(self, uniform: str, value):
         location = glGetUniformLocation(self.program, uniform)
         if location < 0: return
@@ -293,85 +341,179 @@ class Shader:
         glEnableVertexAttribArray(location)
         glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, stride, 0)
 
+
+class FallbackShader(BaseShader):
+    """Safe fallback shader in case the user shader fails to compile"""
+
+    def __init__(self):
+        super().__init__()
+        self.sources[GL_VERTEX_SHADER] = VS_FALLBACK
+        self.sources[GL_FRAGMENT_SHADER] = FS_FALLBACK
+
+class UserShader(BaseShader):
+    """Shader compiled from the user's GLSL source files"""
+    def __init__(self):
+        super().__init__()
+
+        self.prev_mtimes = []
+        self.monitored_files = []
+        self.stage_filenames = dict()
+
+    def update_settings(self, settings):
+        """Update current settings and check if a recompile is necessary
+
+        Raises:
+            FileNotFoundError: If the vertex or fragment shader are missing
+
+        Args:
+            settings (FooRendererSettings): Current settings to read
+        """
+        if not os.path.isfile(settings.vert_filename):
+            raise FileNotFoundError('Missing required vertex shader')
+
+        if not os.path.isfile(settings.frag_filename):
+            raise FileNotFoundError('Missing required fragment shader')
+
+        self.stage_filenames = {
+            GL_VERTEX_SHADER:           settings.vert_filename,
+            GL_TESS_CONTROL_SHADER:     settings.tesc_filename,
+            GL_TESS_EVALUATION_SHADER:  settings.tese_filename,
+            GL_GEOMETRY_SHADER:         settings.geom_filename,
+            GL_FRAGMENT_SHADER:         settings.frag_filename
+        }
+
+        self.monitored_files = [f for f in self.stage_filenames.values() if f]
+
+        # Determine if we need to recompile this shader in the render thread.
+        # This is based on whether the source files have changed and we're live reloading
+        # OR the user has chosen to force reload shaders for whatever reason
+        has_source_changes = self.mtimes_changed()
+        if settings.force_reload or (settings.live_reload and has_source_changes):
+            settings.force_reload = False
+
+            self.load_source_files()
+            self.needs_recompile = True
+
+    def load_source_files(self):
+        """Read source files into their respective stage buffers for recompilation"""
+        self.stage = [f for f in self.stage_filenames]
+
+        for stage in self.STAGES:
+            if self.stage_filenames[stage]:
+                with open(self.stage_filenames[stage]) as f:
+                    self.sources[stage] = f.read()
+            else:
+                self.sources[stage] = None
+
+        # Update our mtimes to match the last time we read from source files
+        self.prev_mtimes = self.mtimes()
+
+    def mtimes(self):
+        """Aggregate file modication times from sources"""
+        return [os.stat(file).st_mtime for file in self.monitored_files]
+
+    def mtimes_changed(self) -> bool:
+        """Check if the file update time has changed in any of the source files"""
+        return self.prev_mtimes != self.mtimes()
+
+
 class Mesh:
     """Minimal representation needed to render a mesh"""
-    def __init__(self):
-        # Once on setup, create a VAO to store VBO/EBO and settings
-        VAO = Buffer(GL_INT, 1)
-        glGenVertexArrays(1, VAO)
-        self.VAO = VAO[0]
+    def __init__(self, name):
+        self.name = name
+        self.lock = threading.Lock()
+        self.VAO = None
+        self.VBO = None
+        self.EBO = None
 
-        VBO = Buffer(GL_INT, 2)
-        glGenBuffers(2, VBO)
-        self.VBO = VBO
-
-        EBO = Buffer(GL_INT, 1)
-        glGenBuffers(1, EBO)
-        self.EBO = EBO[0]
-
-        self.is_dirty = True
+        self.is_dirty = False
         self.indices_size = 0
 
-        # ..and in cleanup:
-        # might need to be buffer refs
-        # glDeleteVertexArrays(1, VAO)
-        # glDeleteBuffers(1, VBO)
-        # glDeleteBuffers(1, EBO)
+    def rebuild(self, eval_obj):
+        """Copy evaluated mesh data into buffers for updating the VBOs on the render thread"""
 
-    def rebuild(self, eval_obj, shader: Shader):
-        """Copy evaluated mesh data into buffers for updating the VBOs"""
-        # mesh = self.obj.data
-        mesh = eval_obj.to_mesh()
+        with self.lock:
+            # We use the evaluated mesh after all modifies are applied.
+            # This is a temporary mesh that we can't safely hold a reference
+            # to within the render thread - so we copy from it here and now.
+            mesh = eval_obj.to_mesh()
 
-        # Refresh triangles on the mesh
-        # TODO: Is this necessary with the eval mesh?
-        mesh.calc_loop_triangles()
+            # Refresh triangles on the mesh
+            # TODO: Is this necessary with the eval mesh?
+            mesh.calc_loop_triangles()
 
-        # Fast copy vertex data / triangle indices from the mesh into buffers
-        # Reference: https://blog.michelanders.nl/2016/02/copying-vertices-to-numpy-arrays-in_4.html
-        vertices = [0]*len(mesh.vertices) * 3
-        mesh.vertices.foreach_get('co', vertices)
-        self.vertices = Buffer(GL_FLOAT, len(vertices), vertices)
+            # Fast copy vertex data / triangle indices from the mesh into buffers
+            # Reference: https://blog.michelanders.nl/2016/02/copying-vertices-to-numpy-arrays-in_4.html
+            self._vertices = [0]*len(mesh.vertices) * 3
+            mesh.vertices.foreach_get('co', self._vertices)
+            self.vertices = Buffer(GL_FLOAT, len(self._vertices), self._vertices)
 
-        normals = [0]*len(mesh.vertices) * 3
-        mesh.vertices.foreach_get('normal', normals)
-        self.normals = Buffer(GL_FLOAT, len(normals), normals)
+            self._normals = [0]*len(mesh.vertices) * 3
+            mesh.vertices.foreach_get('normal', self._normals)
+            self.normals = Buffer(GL_FLOAT, len(self._normals), self._normals)
 
-        indices = [0]*len(mesh.loop_triangles) * 3
-        mesh.loop_triangles.foreach_get('vertices', indices)
-        self.indices = Buffer(GL_INT, len(indices), indices)
+            self._indices = [0]*len(mesh.loop_triangles) * 3
+            mesh.loop_triangles.foreach_get('vertices', self._indices)
+            self.indices = Buffer(GL_INT, len(self._indices), self._indices)
 
-        eval_obj.to_mesh_clear()
+            eval_obj.to_mesh_clear()
 
-        # let the render loop set the new buffer data into the VAO,
-        # otherwise we may run into access violation issues.
-        self.is_dirty = True
+            # Let the render thread know it can copy new buffer data to the GPU
+            self.is_dirty = True
 
-
-    def rebuild_vbos(self, shader: Shader):
+    def rebuild_vbos(self, shader: BaseShader):
         """Upload new vertex buffer data to the GPU
 
-        This method needs to be called within the render thread.
+        This method needs to be called within the render thread
+        to safely access the RenderEngine's current GL context
+
+        Args:
+            shader (BaseShader): Shader to set attribute positions in
         """
+
+        # Make sure our VAO/VBOs are ready
+        if not self.VAO:
+            VAO = Buffer(GL_INT, 1)
+            glGenVertexArrays(1, VAO)
+            self.VAO = VAO[0]
+
+        if not self.VBO:
+            VBO = Buffer(GL_INT, 2)
+            glGenBuffers(2, VBO)
+            self.VBO = VBO
+
+        if not self.EBO:
+            EBO = Buffer(GL_INT, 1)
+            glGenBuffers(1, EBO)
+            self.EBO = EBO[0]
+
         # Bind the VAO so we can upload new buffers
         glBindVertexArray(self.VAO)
 
+        # TODO: Use glBufferSubData to avoid recreating the store with glBufferData.
+        # This would require tracking previous buffer size as well to determine if
+        # we need to rebuild a new one during resizes.
+
         # Copy verts
         glBindBuffer(GL_ARRAY_BUFFER, self.VBO[0])
-        glBufferData(GL_ARRAY_BUFFER, len(self.vertices) * 4, self.vertices, GL_STATIC_DRAW) # GL_STATIC_DRAW - for inactive mesh
+        glBufferData(GL_ARRAY_BUFFER, len(self.vertices) * 4, self.vertices, GL_DYNAMIC_DRAW) # GL_STATIC_DRAW - for inactive mesh
         shader.set_vertex_attribute('Position', 0)
 
         # Copy normals
         glBindBuffer(GL_ARRAY_BUFFER, self.VBO[1])
-        glBufferData(GL_ARRAY_BUFFER, len(self.normals) * 4, self.normals, GL_STATIC_DRAW)
+        glBufferData(GL_ARRAY_BUFFER, len(self.normals) * 4, self.normals, GL_DYNAMIC_DRAW)
         shader.set_vertex_attribute('Normal', 0)
+
+        # TODO: set_vertex_attribute calls don't really make sense here - because we're
+        # not rebuilding a mesh on a shader reload - so those attributes are never bound
+        # on the new program?
 
         # TODO: Tangent, Binormal, Color, Texcoord0-7
         # TODO: Probably don't do per-mesh VAO. See: https://stackoverflow.com/a/18487155
 
         # Copy indices
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.EBO)
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, len(self.indices) * 4, self.indices, GL_STATIC_DRAW)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, len(self.indices) * 4, self.indices, GL_DYNAMIC_DRAW)
 
         # Cleanup, just so bad code elsewhere doesn't also write to this VAO
         glBindVertexArray(0)
@@ -384,23 +526,46 @@ class Mesh:
         """Update transformation info for this mesh"""
         self.model_matrix = obj.matrix_world
 
-    def dirty(self):
-        """Dirty the mesh - causing all GPU buffers to reload"""
-        self.is_dirty = True
-
-    def draw(self, shader: Shader):
+    def draw(self, shader: BaseShader):
         if self.is_dirty:
-            self.rebuild_vbos(shader)
-            self.is_dirty = False
+            with self.lock:
+                self.rebuild_vbos(shader)
+                self.is_dirty = False
+
+        # print('draw VAO={} valid={}, VBO[0]={} valid={}, VBO[1]={} valid={}, EBO={} valid={}'.format(
+        #     self.VAO,
+        #     glIsBuffer(self.VAO),
+        #     self.VBO[0],
+        #     glIsBuffer(self.VBO[0]),
+        #     self.VBO[1],
+        #     glIsBuffer(self.VBO[1]),
+        #     self.EBO,
+        #     glIsBuffer(self.EBO),
+        # ))
 
         glBindVertexArray(self.VAO)
-        glDrawElements(GL_TRIANGLES, self.indices_size, GL_UNSIGNED_INT, 0)
+
+        # If the shader includes a tessellation stage, we need to draw in patch mode
+        if shader.has_tessellation:
+            # glPatchParameteri(GL_PATCH_VERTICES, 3)
+            # Not supported in bgi - but defaults to 3.
+            glDrawElements(GL_PATCHES, self.indices_size, GL_UNSIGNED_INT, 0)
+        else:
+            glDrawElements(GL_TRIANGLES, self.indices_size, GL_UNSIGNED_INT, 0)
+
         glBindVertexArray(0)
 
 class FooRenderEngine(bpy.types.RenderEngine):
     bl_idname = "foo_renderer"
     bl_label = "Foo Renderer"
-    bl_use_preview = True
+    bl_use_preview = False
+
+    # Enable an OpenGL context for the engine (2.91+ only)
+    bl_use_gpu_context = True
+
+    # Apply Blender's compositing on render results.
+    # This enables the "Color Management" section of the scene settings
+    bl_use_postprocess = True
 
     def __init__(self):
         """Called when a new render engine instance is created.
@@ -412,17 +577,8 @@ class FooRenderEngine(bpy.types.RenderEngine):
         self.light_direction = (0, 0, 1, 0)
         self.light_color = (1, 1, 1, 1)
 
-        self.default_shader = Shader()
-        self.user_shader = Shader()
-
-        # Set the initial shader to the default until we load a user shader
-        self.shader = self.default_shader
-
-        try:
-            self.default_shader.compile_from_fallback()
-        except Exception as e:
-            print('--Failed to compile default shader--')
-            print(e)
+        self.fallback_shader = FallbackShader()
+        self.user_shader = UserShader()
 
     def __del__(self):
         """Clean up render engine data, e.g. stopping running render threads"""
@@ -430,6 +586,8 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
     def render(self, depsgraph):
         """Handle final render (F12) and material preview window renders"""
+        # If you want to support material preview windows you will
+        # also need to set `bl_use_preview = True`
         pass
 
     def view_update(self, context, depsgraph):
@@ -464,20 +622,21 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
     def update_mesh(self, obj, depsgraph):
         """Update mesh data for next render"""
+
         # Get/create the mesh instance and determine if we need
         # to reupload geometry to the GPU for this mesh
         rebuild_geometry = obj.name in self.updated_geometries
         if obj.name not in self.meshes:
-            mesh = Mesh()
+            mesh = Mesh(obj.name)
             rebuild_geometry = True
         else:
             mesh = self.meshes[obj.name]
 
         mesh.update(obj)
 
-        # Copy updated vertex data to the GPU when modified
+        # If modified - prep the mesh to be copied to the GPU next draw
         if rebuild_geometry:
-            mesh.rebuild(obj.evaluated_get(depsgraph), self.shader)
+            mesh.rebuild(obj.evaluated_get(depsgraph))
 
         self.updated_meshes[obj.name] = mesh
 
@@ -487,60 +646,60 @@ class FooRenderEngine(bpy.types.RenderEngine):
 
         direction = obj.matrix_world.to_quaternion() @ Vector((0, 0, 1))
         color = obj.data.color
+        intensity = obj.data.foo.intensity
 
         self.light_direction = (direction[0], direction[1], direction[2], 0)
-        self.light_color = (color[0], color[1], color[2], settings.intensity)
+        self.light_color = (color[0], color[1], color[2], intensity)
 
     def check_shaders(self, context):
         """Check if we should reload the shader sources"""
         settings = context.scene.foo
 
-        # Check for readable source files and changes
+        # Check for source file changes or other setting changes
         try:
             self.user_shader.update_settings(settings)
-            has_user_shader_changes = self.user_shader.mtimes_changed()
+            settings.last_shader_error = self.user_shader.last_error
         except Exception as e:
             settings.last_shader_error = str(e)
-            self.shader = self.default_shader
-            return
-
-        # Trigger a recompile if we're forcing it or the files on disk
-        # have been modified since the last render
-        if settings.force_reload or (settings.live_reload and has_user_shader_changes):
-            settings.force_reload = False
-            try:
-                self.user_shader.recompile()
-                settings.last_shader_error = ''
-                self.shader = self.user_shader
-            except Exception as e:
-                print('COMPILE ERROR', type(e))
-                print(e)
-                settings.last_shader_error = str(e)
-                self.shader = self.default_shader
 
     def view_draw(self, context, depsgraph):
-        """Called whenever Blender redraws the 3D viewport"""
-        if not self.shader: return
+        """Called whenever Blender redraws the 3D viewport.
 
+        In 2.91+ this is also where you can safely interact
+        with the GL context for this RenderEngine.
+        """
         scene = depsgraph.scene
         region = context.region
         region3d = context.region_data
         settings = scene.foo
 
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
+
         self.bind_display_space_shader(scene)
-        self.shader.bind()
+
+        # Try to use the user shader. If we can't, use the fallback.
+        shader = self.user_shader
+        if not shader.bind():
+            shader = self.fallback_shader
+            shader.bind()
 
         # Set up MVP matrices
-        self.shader.set_mat4("ViewMatrix", region3d.view_matrix.transposed())
-        self.shader.set_mat4("ProjectionMatrix", region3d.window_matrix.transposed())
-        self.shader.set_mat4("CameraMatrix", region3d.view_matrix.inverted().transposed())
+        shader.set_mat4("ViewMatrix", region3d.view_matrix.transposed())
+        shader.set_mat4("ProjectionMatrix", region3d.window_matrix.transposed())
+        shader.set_mat4("CameraMatrix", region3d.view_matrix.inverted().transposed())
 
         # Upload current lighting information
-        self.shader.set_vec4("_MainLightDirection", self.light_direction)
-        self.shader.set_vec4("_MainLightColor", self.light_color)
+        shader.set_vec4("_MainLightDirection", self.light_direction)
+        shader.set_vec4("_MainLightColor", self.light_color)
+        shader.set_vec4("_AmbientColor", settings.ambient_color)
+
+        # Upload other useful information
+        shader.set_int("_Frame", context.scene.frame_current)
 
         glEnable(GL_DEPTH_TEST)
 
+        # Clear background with the user's clear color
         clear_color = scene.foo.clear_color
         glClearColor(clear_color[0], clear_color[1], clear_color[2], 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -550,22 +709,17 @@ class FooRenderEngine(bpy.types.RenderEngine):
             mvp = region3d.window_matrix @ mv
 
             # Set per-mesh uniforms
-            self.shader.set_mat4("ModelMatrix", mesh.model_matrix.transposed())
-            self.shader.set_mat4("ModelViewMatrix", mv.transposed())
-            self.shader.set_mat4("ModelViewProjectionMatrix", mvp.transposed())
+            shader.set_mat4("ModelMatrix", mesh.model_matrix.transposed())
+            shader.set_mat4("ModelViewMatrix", mv.transposed())
+            shader.set_mat4("ModelViewProjectionMatrix", mvp.transposed())
 
             # Draw the mesh itself
-            mesh.draw(self.shader)
+            mesh.draw(shader)
 
-        self.shader.unbind()
+        shader.unbind()
         self.unbind_display_space_shader()
 
         glDisable(GL_BLEND)
-
-    def refresh_all_buffers(self):
-        """Force *all* GPU buffers to reload"""
-        for mesh in self.meshes.values():
-            mesh.dirty()
 
 #endregion Render Engine
 
@@ -583,40 +737,40 @@ class FooRendererSettings(PropertyGroup):
         name='Vertex Shader',
         description='Source file path',
         default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
+        subtype='FILE_PATH'
+        # update=force_shader_reload
     )
 
     frag_filename: StringProperty(
         name='Fragment Shader',
         description='Source file path',
         default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
+        subtype='FILE_PATH'
+        # update=force_shader_reload
     )
 
     tesc_filename: StringProperty(
         name='Tess Control Shader',
         description='Source file path',
         default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
+        subtype='FILE_PATH'
+        # update=force_shader_reload
     )
 
     tese_filename: StringProperty(
         name='Tess Evaluation Shader',
         description='Source file path',
         default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
+        subtype='FILE_PATH'
+        # update=force_shader_reload
     )
 
     geom_filename: StringProperty(
         name='Geometry Shader',
         description='Source file path',
         default='',
-        subtype='FILE_PATH',
-        update=force_shader_reload
+        subtype='FILE_PATH'
+        # update=force_shader_reload
     )
 
     live_reload: BoolProperty(
@@ -631,6 +785,15 @@ class FooRendererSettings(PropertyGroup):
         default=(0.15, 0.15, 0.15),
         min=0.0, max=1.0,
         description='Background color of the scene'
+    )
+
+    ambient_color: FloatVectorProperty(
+        name='Ambient Color',
+        subtype='COLOR',
+        default=(0.008, 0.008, 0.008, 1),
+        size=4,
+        min=0.0, max=1.0,
+        description='Ambient color of the scene'
     )
 
     force_reload: BoolProperty(
@@ -660,13 +823,6 @@ class FooLightSettings(PropertyGroup):
         default=(0.15, 0.15, 0.15),
         min=0.0, max=1.0,
         description='color picker'
-    )
-
-    distance: FloatProperty(
-        name='Range',
-        default=1.0,
-        description='How far light is emitted from the center of the object',
-        min=0.000001
     )
 
     intensity: FloatProperty(
@@ -742,6 +898,7 @@ class FOO_RENDER_PT_settings_viewport(BasePanel):
 
         col = layout.column(align=True)
         col.prop(settings, 'clear_color')
+        col.prop(settings, 'ambient_color')
 
 class FOO_RENDER_PT_settings_sources(BasePanel):
     """Shader source file references and reload settings"""
@@ -781,7 +938,7 @@ class FOO_RENDER_PT_settings_sources(BasePanel):
 
 class FOO_LIGHT_PT_light(BasePanel):
     """Custom per-light settings editor for this render engine"""
-    bl_label = 'Light'
+    bl_label = 'Foo Light Settings'
     bl_context = 'data'
 
     @classmethod
@@ -790,26 +947,23 @@ class FOO_LIGHT_PT_light(BasePanel):
 
     def draw(self, context):
         layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
         light = context.light
 
         settings = context.light.foo
 
+        col = layout.column(align=True)
+
         # Only a primary sun light is supported
         if light.type != 'SUN':
+            col.label(text='Only Sun lights are supported by Foo')
             return
 
-        if self.bl_space_type == 'PROPERTIES':
-            layout.row().prop(light, 'type', expand=True)
-            layout.use_property_split = True
-        else:
-            layout.use_property_split = True
-            layout.row().prop(light, 'type')
-
-        col = layout.column()
         col.prop(light, 'color')
 
         col.separator()
-        col.prop(settings, 'distance')
         col.prop(settings, 'intensity')
 
 #endregion Panels
@@ -843,7 +997,11 @@ CLASSLIST = (
 def get_panels():
     exclude_panels = {
         'VIEWLAYER_PT_filter',
-        'VIEWLAYER_PT_layer_passes'
+        'VIEWLAYER_PT_layer_passes',
+        'RENDER_PT_freestyle',
+        'RENDER_PT_simplify',
+        'DATA_PT_vertex_colors',
+        'DATA_PT_preview',
     }
 
     panels = []
